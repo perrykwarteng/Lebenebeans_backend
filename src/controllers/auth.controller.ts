@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { db } from "../config";
-import { users } from "../config/db/schema";
+import { db } from "../config/index.js";
+import { users } from "../config/db/schema.js";
 import { eq } from "drizzle-orm";
 import dotenv from "dotenv";
 

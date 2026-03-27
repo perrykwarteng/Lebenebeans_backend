@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   createOrders,
   verifyTransaction,
-} from "../controllers/orders.controller";
+} from "../controllers/orders.controller.js";
 
 const router = Router();
 
