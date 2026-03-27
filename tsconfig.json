@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
-     "module": "CommonJS",
-     "outDir": "./dist",
-     "rootDir": "./src",
-     "types": ["node"],
-     
-     "sourceMap": true,
-     "declaration": true,
-     "declarationMap": true,
-     
-     
-     "esModuleInterop": true,
-     "allowSyntheticDefaultImports": true,
-     "moduleResolution": "node",
+    "module": "CommonJS",
+    "moduleResolution": "node10",
+
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": ["node"],
+
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
 
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -22,7 +22,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
-
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "drizzle.config.ts"]
 }
