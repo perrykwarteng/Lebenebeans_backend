@@ -75,8 +75,8 @@ export const createOrders = async (req: Request, res: Response) => {
         metadata: {
           orderId: orderId,
           orderItems: order,
-          deliveryLocation: location,
-          deliveryFee: deliveryFee,
+          deliveryLocation: location || "No location",
+          deliveryFee: deliveryFee || 0.0,
           foodCost: foodCost,
           deliveryType: deliveryType,
         },
