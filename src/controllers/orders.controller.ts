@@ -33,8 +33,6 @@ export const createOrders = async (req: Request, res: Response) => {
       !name ||
       !number ||
       !deliveryType ||
-      !location ||
-      !deliveryFee ||
       !foodCost ||
       !totalPrice
     ) {
