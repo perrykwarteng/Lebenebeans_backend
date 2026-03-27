@@ -7,7 +7,7 @@ import orderRouter from "./routes/orders.route";
 
 dotenv.config();
 const app = express();
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: process.env.FRONTEND_URL }));
 const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(cookieParser());

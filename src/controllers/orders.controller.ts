@@ -73,7 +73,7 @@ export const createOrders = async (req: Request, res: Response) => {
       {
         email: `${number}@customer.com`,
         amount: totalPrice * 100,
-        callback_url: "http://localhost:5173/verify",
+        callback_url: process.env.PAYSTACK_CALLBACK_URL,
         metadata: {
           orderId: orderId,
           orderItems: order,
