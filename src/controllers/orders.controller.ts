@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
-import { db } from "../config";
 import {
   orderItems,
   orders,
   payments,
   transactions,
-} from "../config/db/schema";
+} from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
 import { eq } from "drizzle-orm";
+import { db } from "../config/index.js";
 
 dotenv.config();
 

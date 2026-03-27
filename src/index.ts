@@ -2,8 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import authRouter from "./routes/auth.route";
-import orderRouter from "./routes/orders.route";
+import authRouter from "./routes/auth.route.js";
+import orderRouter from "./routes/orders.route.js";
 
 dotenv.config();
 const app = express();
