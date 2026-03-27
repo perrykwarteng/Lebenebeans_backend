@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
+    "build": "tsc",
     "start": "node dist/index.ts",
     "dev": "tsx watch src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
