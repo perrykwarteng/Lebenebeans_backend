@@ -113,6 +113,32 @@ export const createOrders = async (req: Request, res: Response) => {
   }
 };
 
+export const webhook = async (req: Request, res: Response) => {
+  try {
+    const { event } = req.body;
+    console.log(event);
+
+    // if (event.event === "charge.success") {
+    //   await db
+    //     .update(transactions)
+    //     .set({
+    //       status: "success",
+    //       paymentsMethod: response.data.data.channel,
+    //     })
+    //     .where(eq(transactions.reference, response.data.data.reference));
+
+    //   await db
+    //     .update(payments)
+    //     .set({
+    //       paymentStatus: "success",
+    //     })
+    //     .where(eq(payments.orderId, response.data.data.metadata.orderId));
+    // }
+  } catch (error) {}
+};
+
+// https://lebenebeans-demo.vercel.app/api/orders/webhook
+
 export const verifyTransaction = async (req: Request, res: Response) => {
   try {
     const { reference } = req.params;
