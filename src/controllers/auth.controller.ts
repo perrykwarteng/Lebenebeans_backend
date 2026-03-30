@@ -5,6 +5,7 @@ import { db } from "../config/index.js";
 import { users } from "../config/db/schema.js";
 import { eq } from "drizzle-orm";
 import dotenv from "dotenv";
+import { AuthRequest } from "../middlewares/auth.middleware.js";
 
 dotenv.config();
 
@@ -112,5 +113,38 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ message: error });
+  }
+};
+
+export const me = (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    res.json({
+      user: {
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role
+      },
+      message: "User fetched successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed getting user details" });
+  }
+};
+
+export const logout = (req: Request, res: Response) => {
+  try {
+    res.cookie("token", "", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 1,
+    });
+    res.json({ message: "Logged out succesfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Logged out Failed" });
   }
 };
