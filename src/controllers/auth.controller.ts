@@ -49,10 +49,10 @@ export const register = async (req: Request, res: Response) => {
     const token = jwt.sign({ id: newUser }, process.env.JWT_SECRET as string, {
       expiresIn: "5d",
     });
+
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
       maxAge: 1000 * 60 * 60 * 48,
     });
 
@@ -103,7 +103,6 @@ export const login = async (req: Request, res: Response) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
-      sameSite: "strict",
       maxAge: 1000 * 60 * 60 * 48,
     });
 
