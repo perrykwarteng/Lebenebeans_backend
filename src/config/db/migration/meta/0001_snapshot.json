@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "fd515394-b403-424e-9174-74b9f0f1c8bc",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "b5174636-6242-42e2-ba2d-d7decb3e06fe",
+  "prevId": "fd515394-b403-424e-9174-74b9f0f1c8bc",
   "tables": {
     "closeOrders": {
       "name": "closeOrders",
@@ -92,14 +92,7 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "delivery_locations_name_unique": {
-          "name": "delivery_locations_name_unique",
-          "columns": [
-            "name"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "order_items": {
@@ -225,7 +218,7 @@
           "name": "completed",
           "type": "tinyint",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
           "default": 0
         },

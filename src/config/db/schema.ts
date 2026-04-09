@@ -1,66 +1,141 @@
 import {
-  boolean,
-  decimal,
-  int,
-  mysqlEnum,
   mysqlTable,
+  unique,
   serial,
+  mysqlEnum,
+  bigint,
+  varchar,
+  decimal,
+  datetime,
+  int,
   text,
   timestamp,
-  varchar,
+  tinyint,
 } from "drizzle-orm/mysql-core";
 
-const roleEnum = mysqlEnum("role", ["admin", "user"]);
-const transactionStatusEnum = mysqlEnum("transactionStatus", [
-  "pending",
-  "success",
-  "failed",
-]);
-
-export const users = mysqlTable("users", {
-  id: serial().primaryKey(),
-  name: varchar({ length: 255 }).notNull(),
-  email: varchar({ length: 255 }).unique().notNull(),
-  password: varchar({ length: 255 }).notNull(),
-  role: roleEnum.notNull(),
+export const closeOrders = mysqlTable("closeOrders", {
+  id: serial().notNull().primaryKey(),
+  closeOrders: mysqlEnum(["close", "open"]).notNull().unique(),
 });
 
-export const orders = mysqlTable("orders", {
-  id: serial().primaryKey(),
+export const deliveryLocations = mysqlTable("delivery_locations", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
   name: varchar({ length: 255 }).notNull(),
-  number: varchar({ length: 255 }).notNull(),
-  location: varchar({ length: 255 }),
-  deliveryType: varchar({ length: 255 }).notNull(),
-  note: text(),
-  orderDelivered: boolean().notNull(),
-  deliveryFee: decimal(),
-  foodCost: decimal().notNull(),
-  totalPrice: decimal().notNull(),
-  createdAt: timestamp().notNull().defaultNow(),
+  price: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+  createdAt: datetime({ mode: "string" }).notNull(),
+  updatedAt: datetime({ mode: "string" }).notNull(),
 });
 
-export const orderItems = mysqlTable("orderItems", {
-  id: serial().primaryKey(),
-  orderId: int().references(() => orders.id),
+export const orderItems = mysqlTable("order_items", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  orderIdFk: bigint({ mode: "number", unsigned: true })
+    .notNull()
+    .references(() => orders.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
   foodName: varchar({ length: 255 }).notNull(),
-  quantity: int().notNull(),
-  price: decimal().notNull(),
+  quantity: int().default(1).notNull(),
+  unitPrice: decimal({ precision: 10, scale: 2 }),
 });
+
+export const orders = mysqlTable(
+  "orders",
+  {
+    id: bigint({ mode: "number", unsigned: true })
+      .autoincrement()
+      .notNull()
+      .primaryKey(),
+    orderId: varchar({ length: 64 }).notNull(),
+    date: bigint({ mode: "number" }).notNull(),
+    name: varchar({ length: 255 }).notNull(),
+    phoneNumber: varchar({ length: 32 }).notNull(),
+    amount: decimal({ precision: 10, scale: 2 }).notNull(),
+    note: text(),
+    completed: tinyint().default(0),
+    location: varchar({ length: 255 }).notNull(),
+    deliveryType: varchar({ length: 64 }),
+    deliveryFee: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+    priceOfFood: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+    orderPaid: tinyint().default(0).notNull(),
+    createdAt: datetime({ mode: "string" }).notNull(),
+    updatedAt: datetime({ mode: "string" }).notNull(),
+    legacyId: varchar({ length: 128 }),
+  },
+  (table) => [
+    unique("legacyId").on(table.legacyId),
+    unique("legacyId_10").on(table.legacyId),
+    unique("legacyId_11").on(table.legacyId),
+    unique("legacyId_12").on(table.legacyId),
+    unique("legacyId_13").on(table.legacyId),
+    unique("legacyId_14").on(table.legacyId),
+    unique("legacyId_2").on(table.legacyId),
+    unique("legacyId_3").on(table.legacyId),
+    unique("legacyId_4").on(table.legacyId),
+    unique("legacyId_5").on(table.legacyId),
+    unique("legacyId_6").on(table.legacyId),
+    unique("legacyId_7").on(table.legacyId),
+    unique("legacyId_8").on(table.legacyId),
+    unique("legacyId_9").on(table.legacyId),
+    unique("orderId").on(table.orderId),
+    unique("orderId_10").on(table.orderId),
+    unique("orderId_11").on(table.orderId),
+    unique("orderId_12").on(table.orderId),
+    unique("orderId_13").on(table.orderId),
+    unique("orderId_14").on(table.orderId),
+    unique("orderId_15").on(table.orderId),
+    unique("orderId_2").on(table.orderId),
+    unique("orderId_3").on(table.orderId),
+    unique("orderId_4").on(table.orderId),
+    unique("orderId_5").on(table.orderId),
+    unique("orderId_6").on(table.orderId),
+    unique("orderId_7").on(table.orderId),
+    unique("orderId_8").on(table.orderId),
+    unique("orderId_9").on(table.orderId),
+  ],
+);
 
 export const payments = mysqlTable("payments", {
-  id: serial().primaryKey(),
-  orderId: int().references(() => orders.id),
-  paymentStatus: transactionStatusEnum.notNull(),
-  totalAmount: decimal().notNull(),
-  createdAt: timestamp().notNull().defaultNow(),
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  orderId: bigint({ mode: "number", unsigned: true }).references(
+    () => orders.id,
+  ),
+  paymentStatus: mysqlEnum(["pending", "success", "failed"]).notNull(),
+  totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
 
 export const transactions = mysqlTable("transactions", {
-  id: serial().primaryKey(),
-  orderId: int().references(() => orders.id),
-  amount: decimal().notNull(),
-  status: transactionStatusEnum.notNull(),
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  orderId: bigint({ mode: "number", unsigned: true }).references(
+    () => orders.id,
+  ),
+  amount: decimal({ precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum(["pending", "success", "failed"]).notNull(),
   reference: varchar({ length: 255 }),
   paymentsMethod: varchar({ length: 255 }),
-  createdAt: timestamp().notNull().defaultNow(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
+
+export const users = mysqlTable("users", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  name: varchar({ length: 255 }).notNull(),
+  email: varchar({ length: 255 }).notNull().unique(),
+  password: varchar({ length: 255 }).notNull(),
+  role: mysqlEnum(["admin", "user"]).notNull(),
 });
