@@ -47,13 +47,13 @@ export const register = async (req: Request, res: Response) => {
       .execute();
 
     const token = jwt.sign({ id: newUser }, process.env.JWT_SECRET as string, {
-      expiresIn: "7d",
+      expiresIn: "5d",
     });
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 48,
     });
 
     res.status(201).json({ user: newUser, message: "Registered Successfully" });
@@ -97,14 +97,14 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET as string, {
-      expiresIn: "7d",
+      expiresIn: "5d",
     });
 
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 48,
     });
 
     res.status(200).json({
@@ -126,7 +126,7 @@ export const me = (req: AuthRequest, res: Response) => {
       user: {
         name: req.user.name,
         email: req.user.email,
-        role: req.user.role
+        role: req.user.role,
       },
       message: "User fetched successfully",
     });
