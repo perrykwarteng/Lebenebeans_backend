@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import { AuthRequest } from "../middlewares/auth.middleware.js";
 
 dotenv.config();
+const isProd = process.env.NODE_ENV === "production";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -52,7 +53,8 @@ export const register = async (req: Request, res: Response) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 48,
     });
 
@@ -102,7 +104,8 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 48,
     });
 
