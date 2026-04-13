@@ -10,8 +10,9 @@ export type OrderType = {
   deliveryFee: string;
   priceOfFood: string;
   amount: string;
-  orderPaid: number;
-  completed: number | null;
+  orderPaid: boolean;
+  completed: boolean | null;
+  promotion: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,4 +28,16 @@ export type OrderItemType = {
 export type GroupedOrder = {
   orders: OrderType;
   orderItems: OrderItemType[];
+};
+
+export type PromotionType = {
+  id?: number;
+  code: string;
+  type: string;
+  limits: number;
+  minOrderAmount: number;
+  minOrder: number;
+  usedCount: number;
+  expiresAt: Date;
+  isActive: boolean;
 };
