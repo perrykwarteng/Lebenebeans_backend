@@ -5,6 +5,8 @@ import {
   payments,
   transactions,
   closeOrders,
+  promotionList,
+  promotion,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -12,7 +14,7 @@ import { db } from "../config/index.js";
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import { io } from "../index.js";
-import { GroupedOrder } from "../types/order.type.js";
+import { GroupedOrder } from "../types/type.js";
 
 dotenv.config();
 
@@ -28,6 +30,7 @@ export const createOrders = async (req: Request, res: Response) => {
       deliveryFee,
       foodCost,
       totalPrice,
+      promoId,
     } = req.body;
 
     if (
@@ -63,8 +66,9 @@ export const createOrders = async (req: Request, res: Response) => {
         deliveryFee,
         deliveryType,
         priceOfFood: foodCost,
-        orderPaid: 0,
-        completed: 0,
+        orderPaid: false,
+        completed: false,
+        promotion: promoId != null ? "Promotion Order" : null,
         createdAt: toMysqlDatetime(now),
         updatedAt: toMysqlDatetime(now),
       })
@@ -81,6 +85,19 @@ export const createOrders = async (req: Request, res: Response) => {
       })),
     );
 
+    if (promoId != null) {
+      const getPromo = await db
+        .select()
+        .from(promotion)
+        .where(eq(promotion.id, promoId));
+
+      await db.insert(promotionList).values({
+        orderId: ordId,
+        promotionId: promoId,
+        code: getPromo[0]!.code,
+        type: getPromo[0]!.type,
+      });
+    }
     await db.insert(payments).values({
       orderId: ordId,
       paymentStatus: "pending",
@@ -130,7 +147,10 @@ export const createOrders = async (req: Request, res: Response) => {
       data: initaitPayment.data,
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
+    return res.status(500).json({
+      message: "Server error",
+      error: error instanceof Error ? error.message : error,
+    });
   }
 };
 
@@ -174,7 +194,7 @@ export const webhook = async (req: Request, res: Response) => {
 
     await db
       .update(orders)
-      .set({ orderPaid: 1 })
+      .set({ orderPaid: true })
       .where(eq(orders.id, data.metadata.orderId));
 
     await db
@@ -195,8 +215,11 @@ export const webhook = async (req: Request, res: Response) => {
 export const verifyTransaction = async (req: Request, res: Response) => {
   try {
     const { reference } = req.params;
-    if (!reference)
+
+    if (!reference) {
       return res.status(400).json({ message: "Reference not available" });
+    }
+
     const response = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
       {
@@ -206,12 +229,16 @@ export const verifyTransaction = async (req: Request, res: Response) => {
         },
       },
     );
-
-    res
-      .status(200)
-      .json({ message: "Transaction Verified", data: response.data });
+    const data = response.data;
+    return res.status(200).json({
+      message: "Transaction Verified",
+      data,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
+    return res.status(500).json({
+      message: "Internal server error",
+      error,
+    });
   }
 };
 
@@ -222,7 +249,9 @@ export const pendingOrders = async (req: Request, res: Response) => {
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderIdFk, orders.id))
       .innerJoin(transactions, eq(transactions.orderId, orders.id))
-      .where(and(eq(transactions.status, "success"), eq(orders.completed, 0)));
+      .where(
+        and(eq(transactions.status, "success"), eq(orders.completed, false)),
+      );
 
     const result: Record<number, GroupedOrder> = {};
 
@@ -258,7 +287,7 @@ export const deliveredOrders = async (req: Request, res: Response) => {
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderIdFk))
-      .where(eq(orders.completed, 1));
+      .where(eq(orders.completed, true));
 
     const result: Record<number, GroupedOrder> = {};
 
@@ -297,7 +326,7 @@ export const deliveredStatus = async (req: Request, res: Response) => {
     const order = await db
       .update(orders)
       .set({
-        completed: 1,
+        completed: true,
       })
       .where(eq(orders.id, orderId));
 
