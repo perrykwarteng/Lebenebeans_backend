@@ -10,12 +10,12 @@ import {
   int,
   text,
   timestamp,
-  tinyint,
+  boolean,
 } from "drizzle-orm/mysql-core";
 
 export const closeOrders = mysqlTable("closeOrders", {
   id: serial().notNull().primaryKey(),
-  closeOrders: mysqlEnum(["close", "open"]).notNull().unique(),
+  closeOrders: mysqlEnum(["close", "open"]).notNull(),
 });
 
 export const deliveryLocations = mysqlTable("delivery_locations", {
@@ -58,12 +58,13 @@ export const orders = mysqlTable(
     phoneNumber: varchar({ length: 32 }).notNull(),
     amount: decimal({ precision: 10, scale: 2 }).notNull(),
     note: text(),
-    completed: tinyint().default(0),
+    completed: boolean().default(false),
     location: varchar({ length: 255 }).notNull(),
     deliveryType: varchar({ length: 64 }),
     deliveryFee: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     priceOfFood: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
-    orderPaid: tinyint().default(0).notNull(),
+    orderPaid: boolean().default(false).notNull(),
+    promotion: varchar({ length: 64 }),
     createdAt: datetime({ mode: "string" }).notNull(),
     updatedAt: datetime({ mode: "string" }).notNull(),
     legacyId: varchar({ length: 128 }),
@@ -138,4 +139,32 @@ export const users = mysqlTable("users", {
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
   role: mysqlEnum(["admin", "user"]).notNull(),
+});
+
+export const promotion = mysqlTable("promotion", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  code: varchar({ length: 255 }).notNull(),
+  type: varchar({ length: 255 }).notNull(),
+  limits: bigint({ mode: "number" }),
+  minOrderAmount: bigint({ mode: "number" }),
+  minOrder: bigint({ mode: "number" }),
+  usedCount: bigint({ mode: "number" }).default(0).notNull(),
+  expiresAt: datetime().notNull(),
+  isActive: boolean().default(false).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
+
+export const promotionList = mysqlTable("promotionList", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  orderId: bigint({ mode: "number" }).references(() => orders.id),
+  promotionId: bigint({ mode: "number" }).references(() => promotion.id),
+  code: varchar({ length: 255 }).notNull(),
+  type: varchar({ length: 255 }).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });

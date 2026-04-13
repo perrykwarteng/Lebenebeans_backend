@@ -1,8 +1,7 @@
 CREATE TABLE `closeOrders` (
 	`id` serial AUTO_INCREMENT NOT NULL,
 	`closeOrders` enum('close','open') NOT NULL,
-	CONSTRAINT `closeOrders_id` PRIMARY KEY(`id`),
-	CONSTRAINT `closeOrders_closeOrders_unique` UNIQUE(`closeOrders`)
+	CONSTRAINT `closeOrders_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `delivery_locations` (
@@ -11,8 +10,7 @@ CREATE TABLE `delivery_locations` (
 	`price` decimal(10,2) NOT NULL DEFAULT '0.00',
 	`createdAt` datetime NOT NULL,
 	`updatedAt` datetime NOT NULL,
-	CONSTRAINT `delivery_locations_id` PRIMARY KEY(`id`),
-	CONSTRAINT `delivery_locations_name_unique` UNIQUE(`name`)
+	CONSTRAINT `delivery_locations_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
 CREATE TABLE `order_items` (
@@ -32,12 +30,12 @@ CREATE TABLE `orders` (
 	`phoneNumber` varchar(32) NOT NULL,
 	`amount` decimal(10,2) NOT NULL,
 	`note` text,
-	`completed` tinyint NOT NULL DEFAULT 0,
+	`completed` boolean DEFAULT false,
 	`location` varchar(255) NOT NULL,
 	`deliveryType` varchar(64),
 	`deliveryFee` decimal(10,2) NOT NULL DEFAULT '0.00',
 	`priceOfFood` decimal(10,2) NOT NULL DEFAULT '0.00',
-	`orderPaid` tinyint NOT NULL DEFAULT 0,
+	`orderPaid` boolean NOT NULL DEFAULT false,
 	`createdAt` datetime NOT NULL,
 	`updatedAt` datetime NOT NULL,
 	`legacyId` varchar(128),
@@ -82,6 +80,30 @@ CREATE TABLE `payments` (
 	CONSTRAINT `payments_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `promotion` (
+	`id` bigint unsigned AUTO_INCREMENT NOT NULL,
+	`code` varchar(255) NOT NULL,
+	`type` varchar(255) NOT NULL,
+	`limits` bigint,
+	`minOrderAmount` bigint,
+	`minOrder` bigint,
+	`usedCount` bigint NOT NULL DEFAULT 0,
+	`expiresAt` datetime NOT NULL,
+	`isActive` boolean NOT NULL DEFAULT false,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `promotion_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `promotionList` (
+	`id` bigint unsigned AUTO_INCREMENT NOT NULL,
+	`orderId` bigint,
+	`promotionId` bigint,
+	`code` varchar(255) NOT NULL,
+	`type` varchar(255) NOT NULL,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `promotionList_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE TABLE `transactions` (
 	`id` bigint unsigned AUTO_INCREMENT NOT NULL,
 	`orderId` bigint unsigned,
@@ -105,4 +127,6 @@ CREATE TABLE `users` (
 --> statement-breakpoint
 ALTER TABLE `order_items` ADD CONSTRAINT `order_items_orderIdFk_orders_id_fk` FOREIGN KEY (`orderIdFk`) REFERENCES `orders`(`id`) ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE `payments` ADD CONSTRAINT `payments_orderId_orders_id_fk` FOREIGN KEY (`orderId`) REFERENCES `orders`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `promotionList` ADD CONSTRAINT `promotionList_orderId_orders_id_fk` FOREIGN KEY (`orderId`) REFERENCES `orders`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `promotionList` ADD CONSTRAINT `promotionList_promotionId_promotion_id_fk` FOREIGN KEY (`promotionId`) REFERENCES `promotion`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `transactions` ADD CONSTRAINT `transactions_orderId_orders_id_fk` FOREIGN KEY (`orderId`) REFERENCES `orders`(`id`) ON DELETE no action ON UPDATE no action;

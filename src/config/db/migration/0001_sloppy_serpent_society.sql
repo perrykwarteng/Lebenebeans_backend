@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `promotion` varchar(64);
