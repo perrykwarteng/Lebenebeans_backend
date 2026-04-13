@@ -6,6 +6,7 @@ import authRouter from "./routes/auth.route.js";
 import orderRouter from "./routes/orders.route.js";
 import locationRouter from "./routes/location.route.js";
 import statisticsRouter from "./routes/statistics.route.js";
+import promotionRouter from "./routes/promotion.route.js";
 import http from "http";
 import { Server } from "socket.io";
 
@@ -29,6 +30,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/orders", orderRouter);
 app.use("/api/locations", locationRouter);
 app.use("/api/statistics", statisticsRouter);
+app.use("/api/promotion", promotionRouter);
 
 io.on("connection", (socket) => {
   socket;
