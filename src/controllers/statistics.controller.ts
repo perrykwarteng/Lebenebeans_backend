@@ -14,7 +14,7 @@ export const statistics = async (req: Request, res: Response) => {
       .from(orders)
       .where(
         and(
-          eq(orders.orderPaid, 1),
+          eq(orders.orderPaid, true),
           sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
         ),
       );
@@ -26,7 +26,7 @@ export const statistics = async (req: Request, res: Response) => {
       .from(orders)
       .where(
         and(
-          eq(orders.orderPaid, 1),
+          eq(orders.orderPaid, true),
           sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
         ),
       );
