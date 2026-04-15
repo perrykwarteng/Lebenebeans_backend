@@ -36,8 +36,10 @@ export type PromotionType = {
   type: string;
   limits: number;
   minOrderAmount: number;
+  orderDiscount: number;
   minOrder: number;
   usedCount: number;
+  startAt: Date;
   expiresAt: Date;
   isActive: boolean;
 };

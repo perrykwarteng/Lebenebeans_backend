@@ -12,7 +12,7 @@ import dotenv from "dotenv";
 import axios from "axios";
 import { db } from "../config/index.js";
 import crypto from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 
@@ -89,6 +89,13 @@ export const createOrders = async (req: Request, res: Response) => {
       const getPromo = await db
         .select()
         .from(promotion)
+        .where(eq(promotion.id, promoId));
+
+      await db
+        .update(promotion)
+        .set({
+          usedCount: sql`${promotion.usedCount} + 1`,
+        })
         .where(eq(promotion.id, promoId));
 
       await db.insert(promotionList).values({
