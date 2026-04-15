@@ -1,21 +1,8 @@
-// {
-//   "code": "BUY2FREEDEL",
-//   "type": "FREE_DELIVERY",
-//   "limits": 100,
-//   "minOrderAmount": 0,
-//   "minOrder": 2,
-//   "usedCount": 0,
-//   "expiresAt": "2026-12-31 23:59:59",
-//   "isActive": true,
-// }
-
 import { Request, Response } from "express";
 import { db } from "../config/index.js";
 import { promotion } from "../config/db/schema.js";
 import { PromotionType } from "../types/type.js";
 import { and, eq, gt } from "drizzle-orm";
-import { toMysqlDatetime } from "../utils/dateFormat.js";
-import { date } from "drizzle-orm/mysql-core";
 
 export const createPromotion = async (req: Request, res: Response) => {
   try {
@@ -24,11 +11,13 @@ export const createPromotion = async (req: Request, res: Response) => {
       type,
       limits,
       minOrderAmount,
+      discount,
       minOrder,
       usedCount,
+      startAt,
       expiresAt,
       isActive,
-    } = req.body as PromotionType;
+    } = req.body;
 
     if (!code || !type || !expiresAt || !isActive) {
       return res.status(400).json({
@@ -47,13 +36,16 @@ export const createPromotion = async (req: Request, res: Response) => {
         .status(400)
         .json({ message: "This promotion offer already exists" });
     }
+
     const promoValues: PromotionType = {
       code,
       type,
       limits,
       minOrderAmount,
+      orderDiscount: discount,
       minOrder,
       usedCount,
+      startAt: new Date(startAt),
       expiresAt: new Date(expiresAt),
       isActive,
     };
@@ -85,16 +77,22 @@ export const getPromotion = async (req: Request, res: Response) => {
       .from(promotion)
       .where(and(eq(promotion.code, code), eq(promotion.type, type)));
 
+    if (getPromo[0]?.startAt! > nowDate) {
+      return res.status(400).json({
+        message: "Sorry Promotion has not yet started",
+      });
+    }
+
     if (getPromo[0]?.expiresAt! < nowDate) {
-      return res
-        .status(400)
-        .json({ data: { message: "Sorry link has expired" } });
+      return res.status(400).json({
+        message: "Sorry promotion link has expired try another time",
+      });
     }
 
     if (getPromo[0]?.code !== code || getPromo[0].type !== type)
-      return res
-        .status(400)
-        .json({ data: { message: "Sorry You have wrong promo link" } });
+      return res.status(400).json({
+        message: "Sorry You have wrong promo link, Check and apply again",
+      });
 
     res.status(200).json({
       message: "Returned Promotion Successfully",
@@ -103,7 +101,9 @@ export const getPromotion = async (req: Request, res: Response) => {
         code: getPromo[0]?.code,
         type: getPromo[0]?.type,
         minOrderAmount: getPromo[0]?.minOrderAmount,
+        orderDiscount: getPromo[0].orderDiscount,
         minOrder: getPromo[0]?.minOrder,
+        startAt: getPromo[0]?.startAt! > nowDate ? false : getPromo[0]?.startAt,
         expiresAt:
           getPromo[0]?.expiresAt! < nowDate ? false : getPromo[0]?.expiresAt,
         isActive: getPromo[0]?.isActive,
