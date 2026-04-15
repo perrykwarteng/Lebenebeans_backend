@@ -15,6 +15,20 @@
       "when": 1776101184444,
       "tag": "0001_sloppy_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1776175380427,
+      "tag": "0002_curly_mister_fear",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1776175412295,
+      "tag": "0003_nasty_sphinx",
+      "breakpoints": true
     }
   ]
 }
