@@ -14,14 +14,19 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigins: string[] = [
+  process.env.FRONTEND_URL as string,
+  process.env.FRONTEND_LOCAL_URL as string,
+];
+
 export const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   },
 });
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use(cookieParser());
