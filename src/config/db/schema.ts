@@ -170,3 +170,14 @@ export const promotionList = mysqlTable("promotionList", {
   type: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
+
+export const guest = mysqlTable("guest", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  orderId: bigint({ mode: "number" }).references(() => orders.id),
+  phoneNumber: bigint({ mode: "number" }).references(() => promotion.id),
+  name: varchar({ length: 255 }).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});

@@ -7,6 +7,7 @@ import {
   closeOrders,
   promotionList,
   promotion,
+  guest,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -109,6 +110,12 @@ export const createOrders = async (req: Request, res: Response) => {
       orderId: ordId,
       paymentStatus: "pending",
       totalAmount: totalPrice,
+    });
+
+    await db.insert(guest).values({
+      orderId: ordId,
+      name: name,
+      phoneNumber: number,
     });
 
     const initaitPayment = await axios.post(

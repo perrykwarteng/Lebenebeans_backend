@@ -29,6 +29,13 @@
       "when": 1776175412295,
       "tag": "0003_nasty_sphinx",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776694937778,
+      "tag": "0004_outgoing_scalphunter",
+      "breakpoints": true
     }
   ]
 }
