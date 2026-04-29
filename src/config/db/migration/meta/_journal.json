@@ -36,6 +36,13 @@
       "when": 1776694937778,
       "tag": "0004_outgoing_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1777462947423,
+      "tag": "0005_outgoing_talos",
+      "breakpoints": true
     }
   ]
 }

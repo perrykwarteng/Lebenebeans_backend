@@ -8,6 +8,7 @@ import locationRouter from "./routes/location.route.js";
 import statisticsRouter from "./routes/statistics.route.js";
 import promotionRouter from "./routes/promotion.route.js";
 import guestRouter from "./routes/guest.route.js";
+import menuRouter from "./routes/menu.route.js";
 import http from "http";
 import { Server } from "socket.io";
 
@@ -38,6 +39,7 @@ app.use("/api/locations", locationRouter);
 app.use("/api/statistics", statisticsRouter);
 app.use("/api/promotion", promotionRouter);
 app.use("/api/guest", guestRouter);
+app.use("/api/menus", menuRouter);
 
 io.on("connection", (socket) => {
   socket;

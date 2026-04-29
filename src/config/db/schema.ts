@@ -181,3 +181,13 @@ export const guest = mysqlTable("guest", {
   name: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
+
+export const menu = mysqlTable("menu", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  name: varchar({ length: 255 }).notNull(),
+  price: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+  quantity: bigint({ mode: "number" }).notNull(),
+});
