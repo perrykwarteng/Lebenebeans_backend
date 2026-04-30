@@ -92,6 +92,12 @@ export const createOrders = async (req: Request, res: Response) => {
         .from(promotion)
         .where(eq(promotion.id, promoId));
 
+      const promo = getPromo?.[0];
+
+      if (!promo) {
+        throw new Error("Invalid or missing promotion");
+      }
+
       await db
         .update(promotion)
         .set({
@@ -102,8 +108,8 @@ export const createOrders = async (req: Request, res: Response) => {
       await db.insert(promotionList).values({
         orderId: ordId,
         promotionId: promoId,
-        code: getPromo[0]!.code,
-        type: getPromo[0]!.type,
+        code: promo.code,
+        type: promo.type,
       });
     }
     await db.insert(payments).values({
