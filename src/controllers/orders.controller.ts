@@ -137,6 +137,7 @@ export const createOrders = async (req: Request, res: Response) => {
           deliveryFee: deliveryFee || 0.0,
           foodCost: foodCost,
           deliveryType: deliveryType,
+          phoneNumber: number,
         },
       },
       {
