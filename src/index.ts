@@ -29,7 +29,7 @@ export const io = new Server(server, {
 });
 
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser());
 

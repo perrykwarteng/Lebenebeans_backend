@@ -9,6 +9,7 @@ import {
   deliveredStatus,
   pendingOrders,
   webhook,
+  FailedOrders,
 } from "../controllers/orders.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
@@ -17,6 +18,7 @@ const router = Router();
 router.post("/orders", createOrders);
 router.get("/pendingOrders", requireAuth, pendingOrders);
 router.get("/deliveredOrders", requireAuth, deliveredOrders);
+router.get("/failedOrders", requireAuth, FailedOrders);
 router.get("/orderDelivered/:id", requireAuth, deliveredStatus);
 router.get("/orderCancle/:id", requireAuth, cancelStatus);
 router.get("/verify/:reference", verifyTransaction);

@@ -13,7 +13,7 @@ import dotenv from "dotenv";
 import axios from "axios";
 import { db } from "../config/index.js";
 import crypto from "crypto";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, or } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 
@@ -112,6 +112,7 @@ export const createOrders = async (req: Request, res: Response) => {
         type: promo.type,
       });
     }
+
     await db.insert(payments).values({
       orderId: ordId,
       paymentStatus: "pending",
@@ -157,6 +158,20 @@ export const createOrders = async (req: Request, res: Response) => {
         paymentsMethod: "",
       });
     } else {
+      await db.insert(transactions).values({
+        orderId: ordId,
+        amount: totalPrice,
+        status: "failed",
+        reference: initaitPayment.data.data.reference,
+        paymentsMethod: "",
+      });
+
+      await db.insert(payments).values({
+        orderId: ordId,
+        paymentStatus: "failed",
+        totalAmount: totalPrice,
+      });
+
       res.status(400).json({
         message: "Failed initiating Payment",
         data: initaitPayment.data,
@@ -308,11 +323,64 @@ export const deliveredOrders = async (req: Request, res: Response) => {
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderIdFk))
-      .where(eq(orders.completed, true));
+      .innerJoin(transactions, eq(transactions.orderId, orders.id))
+      .where(
+        and(eq(transactions.status, "success"), eq(orders.completed, true)),
+      );
 
     const result: Record<number, GroupedOrder> = {};
 
     ordersDelivered.forEach((curr) => {
+      const id = curr.orders.id;
+
+      if (!result[id]) {
+        result[id] = {
+          orders: curr.orders,
+          orderItems: [],
+        };
+      }
+
+      result[id].orderItems.push({
+        id: curr.order_items.id,
+        orderIdFk: curr.order_items.orderIdFk,
+        foodName: curr.order_items.foodName,
+        quantity: curr.order_items.quantity,
+        unitPrice: curr.order_items.unitPrice,
+      });
+    });
+
+    const ordersArray = Object.values(result).reverse();
+    res.status(200).json({ data: ordersArray });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
+export const FailedOrders = async (req: Request, res: Response) => {
+  try {
+    const failedOrders = await db
+      .select()
+      .from(orders)
+      .innerJoin(orderItems, eq(orderItems.orderIdFk, orders.id))
+      .innerJoin(transactions, eq(transactions.orderId, orders.id))
+      .innerJoin(payments, eq(payments.orderId, orders.id))
+      .where(
+        and(
+          or(
+            eq(transactions.status, "pending"),
+            eq(transactions.status, "failed"),
+          ),
+          or(
+            eq(payments.paymentStatus, "pending"),
+            eq(payments.paymentStatus, "failed"),
+          ),
+          eq(orders.completed, false),
+        ),
+      );
+
+    const result: Record<number, GroupedOrder> = {};
+
+    failedOrders.forEach((curr) => {
       const id = curr.orders.id;
 
       if (!result[id]) {
