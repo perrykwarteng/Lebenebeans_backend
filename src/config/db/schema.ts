@@ -11,7 +11,9 @@ import {
   text,
   timestamp,
   boolean,
+  json,
 } from "drizzle-orm/mysql-core";
+import { device, userInfo } from "../../types/type.js";
 
 export const closeOrders = mysqlTable("closeOrders", {
   id: serial().notNull().primaryKey(),
@@ -109,6 +111,10 @@ export const payments = mysqlTable("payments", {
     .primaryKey(),
   orderId: bigint({ mode: "number", unsigned: true }).references(
     () => orders.id,
+    {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    },
   ),
   paymentStatus: mysqlEnum(["pending", "success", "failed"]).notNull(),
   totalAmount: decimal({ precision: 10, scale: 2 }).notNull(),
@@ -122,6 +128,10 @@ export const transactions = mysqlTable("transactions", {
     .primaryKey(),
   orderId: bigint({ mode: "number", unsigned: true }).references(
     () => orders.id,
+    {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    },
   ),
   amount: decimal({ precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum(["pending", "success", "failed"]).notNull(),
@@ -138,21 +148,35 @@ export const users = mysqlTable("users", {
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
-  role: mysqlEnum(["admin", "user"]).notNull(),
+  role: mysqlEnum(["super-admin", "sub-admin", "admin", "user"]).notNull(),
 });
 
 export const promotion = mysqlTable("promotion", {
-  id: bigint({ mode: "number", unsigned: true })
-    .autoincrement()
-    .notNull()
-    .primaryKey(),
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
   code: varchar({ length: 255 }).notNull(),
   type: varchar({ length: 255 }).notNull(),
-  limits: bigint({ mode: "number" }),
-  minOrderAmount: bigint({ mode: "number" }),
-  orderDiscount: bigint({ mode: "number" }),
-  minOrder: bigint({ mode: "number" }),
-  usedCount: bigint({ mode: "number" }).default(0).notNull(),
+  limits: bigint({
+    mode: "number",
+    unsigned: true,
+  }),
+  minOrderAmount: decimal({
+    precision: 10,
+    scale: 2,
+  }),
+  orderDiscount: decimal({
+    precision: 10,
+    scale: 2,
+  }),
+  minOrder: bigint({
+    mode: "number",
+    unsigned: true,
+  }),
+  usedCount: bigint({
+    mode: "number",
+    unsigned: true,
+  })
+    .default(0)
+    .notNull(),
   startAt: datetime().notNull(),
   expiresAt: datetime().notNull(),
   isActive: boolean().default(false).notNull(),
@@ -160,12 +184,21 @@ export const promotion = mysqlTable("promotion", {
 });
 
 export const promotionList = mysqlTable("promotionList", {
-  id: bigint({ mode: "number", unsigned: true })
-    .autoincrement()
-    .notNull()
-    .primaryKey(),
-  orderId: bigint({ mode: "number" }).references(() => orders.id),
-  promotionId: bigint({ mode: "number" }).references(() => promotion.id),
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  orderId: bigint({
+    mode: "number",
+    unsigned: true,
+  }).references(() => orders.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  promotionId: bigint({
+    mode: "number",
+    unsigned: true,
+  }).references(() => promotion.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
   code: varchar({ length: 255 }).notNull(),
   type: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
@@ -176,8 +209,14 @@ export const guest = mysqlTable("guest", {
     .autoincrement()
     .notNull()
     .primaryKey(),
-  orderId: bigint({ mode: "number" }).references(() => orders.id),
-  phoneNumber: bigint({ mode: "number" }).references(() => promotion.id),
+  orderId: bigint({
+    mode: "number",
+    unsigned: true,
+  }).references(() => orders.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  phoneNumber: varchar({ length: 32 }),
   name: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
@@ -189,5 +228,20 @@ export const menu = mysqlTable("menu", {
     .primaryKey(),
   name: varchar({ length: 255 }).notNull(),
   price: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
-  quantity: bigint({ mode: "number" }).notNull(),
+  quantity: bigint({ mode: "number", unsigned: true }).default(0),
+});
+
+export const logs = mysqlTable("logs", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  user: json("user").$type<userInfo>(),
+  action: varchar({ length: 255 }).notNull(),
+  module: varchar({ length: 255 }).notNull(),
+  description: text().notNull(),
+  ipAddress: varchar({ length: 64 }),
+  device: json("device").$type<device>(),
+  status: mysqlEnum(["success", "pending", "failed"]).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });

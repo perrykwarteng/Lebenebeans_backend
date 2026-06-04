@@ -43,6 +43,90 @@
       "when": 1777462947423,
       "tag": "0005_outgoing_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1780372458501,
+      "tag": "0006_parallel_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1780372834987,
+      "tag": "0007_aberrant_speed_demon",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1780373143767,
+      "tag": "0008_worried_angel",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1780373372388,
+      "tag": "0009_real_the_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1780373587761,
+      "tag": "0010_robust_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1780387918749,
+      "tag": "0011_material_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1780474905184,
+      "tag": "0012_easy_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1780481306109,
+      "tag": "0013_clean_microbe",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1780481559240,
+      "tag": "0014_left_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1780481840537,
+      "tag": "0015_sloppy_nebula",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1780482053439,
+      "tag": "0016_fine_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1780483373115,
+      "tag": "0017_mean_switch",
+      "breakpoints": true
     }
   ]
 }
