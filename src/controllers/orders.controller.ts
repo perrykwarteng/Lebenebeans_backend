@@ -8,6 +8,8 @@ import {
   promotionList,
   promotion,
   guest,
+  logs,
+  users,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -16,6 +18,7 @@ import crypto from "crypto";
 import { eq, and, sql, or } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
+import { Device, IpAddress } from "../utils/ip.js";
 
 dotenv.config();
 
@@ -178,6 +181,27 @@ export const createOrders = async (req: Request, res: Response) => {
       });
     }
 
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: ordId,
+        name: name,
+        email: number,
+      },
+      action: "Create",
+      module: "Order",
+      description: `Made an order ${id}`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
     res.status(201).json({
       message: "Order Ceated successfully",
       data: initaitPayment.data,
@@ -323,10 +347,8 @@ export const deliveredOrders = async (req: Request, res: Response) => {
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderIdFk))
-      .innerJoin(transactions, eq(transactions.orderId, orders.id))
-      .where(
-        and(eq(transactions.status, "success"), eq(orders.completed, true)),
-      );
+      // .innerJoin(transactions, eq(transactions.orderId, orders.id))
+      .where(eq(orders.completed, true));
 
     const result: Record<number, GroupedOrder> = {};
 
@@ -409,9 +431,13 @@ export const FailedOrders = async (req: Request, res: Response) => {
 export const deliveredStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { userId } = req.body;
 
     const orderId = Number(id);
-    if (!orderId) return res.status(400).json({ message: "Id is required" });
+    if (!orderId || !userId)
+      return res
+        .status(400)
+        .json({ message: "Order Id and User Id is required" });
     const order = await db
       .update(orders)
       .set({
@@ -419,10 +445,37 @@ export const deliveredStatus = async (req: Request, res: Response) => {
       })
       .where(eq(orders.id, orderId));
 
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Complete",
+      module: "Order",
+      description: `Delivered order ${orderId}`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
     res
       .status(200)
       .json({ message: "Delivery Status Changed to Delivered", data: order });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Internal server error", error });
   }
 };
@@ -430,9 +483,13 @@ export const deliveredStatus = async (req: Request, res: Response) => {
 export const cancelStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { userId } = req.body;
 
     const orderId = Number(id);
-    if (!orderId) return res.status(400).json({ message: "Id is required" });
+    if (!orderId) {
+      return res.status(400).json({ message: "Id is required" });
+    }
+
     const order = await db
       .update(orders)
       .set({
@@ -440,9 +497,42 @@ export const cancelStatus = async (req: Request, res: Response) => {
       })
       .where(eq(orders.id, orderId));
 
-    res.status(200).json({ message: "Cancelled Delivery", data: order });
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Cancel",
+      module: "Order",
+      description: `Cancelled order ${orderId}`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
+    return res.status(200).json({
+      message: "Cancelled successfully",
+      data: order,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error,
+    });
   }
 };
 
@@ -458,7 +548,10 @@ export const closeOrder = async (req: Request, res: Response) => {
 export const changeOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { close } = req.body;
+    const { close, userId } = req.body;
+
+    console.log(close);
+    console.log(userId);
 
     const closeId = Number(id);
     if (isNaN(closeId)) return res.status(400).json({ message: "Invalid id" });
@@ -469,8 +562,87 @@ export const changeOrderStatus = async (req: Request, res: Response) => {
       .set({ closeOrders: close })
       .where(eq(closeOrders.id, closeId));
 
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: `${close}`,
+      module: "Order",
+      description: `${close} order`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
     res.status(200).json({ data: updated[0] });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
+export const deleteStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    const orderId = Number(id);
+    const parsedUserId = Number(userId);
+
+    if (!orderId) {
+      return res.status(400).json({ message: "Id is required" });
+    }
+    await db.delete(orders).where(eq(orders.id, orderId));
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parsedUserId));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Delete",
+      module: "Order",
+      description: `Order ${orderId} Deleted`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
+    return res.status(200).json({ message: "Deleted Order" });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal server error",
+      error,
+    });
   }
 };
