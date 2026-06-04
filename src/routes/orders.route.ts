@@ -10,6 +10,7 @@ import {
   pendingOrders,
   webhook,
   FailedOrders,
+  deleteStatus,
 } from "../controllers/orders.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
@@ -19,8 +20,9 @@ router.post("/orders", createOrders);
 router.get("/pendingOrders", requireAuth, pendingOrders);
 router.get("/deliveredOrders", requireAuth, deliveredOrders);
 router.get("/failedOrders", requireAuth, FailedOrders);
-router.get("/orderDelivered/:id", requireAuth, deliveredStatus);
-router.get("/orderCancle/:id", requireAuth, cancelStatus);
+router.patch("/orderDelivered/:id", requireAuth, deliveredStatus);
+router.patch("/orderCancel/:id", requireAuth, cancelStatus);
+router.delete("/orderDelete/:id", requireAuth, deleteStatus);
 router.get("/verify/:reference", verifyTransaction);
 router.post("/webhook", webhook);
 router.get("/closeOrder", closeOrder);
