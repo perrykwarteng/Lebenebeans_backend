@@ -43,3 +43,21 @@ export type PromotionType = {
   expiresAt: Date;
   isActive: boolean;
 };
+
+export type changePasswordType = {
+  email: string;
+  userId: number;
+  newPassword: string;
+};
+
+export type userInfo = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export type device = {
+  type: string;
+  browser: string;
+  os: string;
+};
