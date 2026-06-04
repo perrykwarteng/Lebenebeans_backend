@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../config/index.js";
 import { promotion } from "../config/db/schema.js";
 import { PromotionType } from "../types/type.js";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export const createPromotion = async (req: Request, res: Response) => {
   try {
@@ -19,10 +19,10 @@ export const createPromotion = async (req: Request, res: Response) => {
       isActive,
     } = req.body;
 
-    if (!code || !type || !expiresAt || !isActive) {
+    if (!code || !type || !expiresAt || isActive === undefined) {
       return res.status(400).json({
         message:
-          "promotion code, promotion type, promotion expiresAt, promotion isActive are required fields",
+          "promotion code, type, expiresAt, and isActive are required fields",
       });
     }
 
@@ -37,22 +37,22 @@ export const createPromotion = async (req: Request, res: Response) => {
         .json({ message: "This promotion offer already exists" });
     }
 
-    const promoValues: PromotionType = {
+    await db.insert(promotion).values({
       code,
       type,
-      limits,
-      minOrderAmount,
-      orderDiscount: discount,
-      minOrder,
-      usedCount,
+      limits: limits ? Number(limits) : null,
+      minOrderAmount: minOrderAmount ? String(minOrderAmount) : null,
+      orderDiscount: discount ? String(discount) : null,
+      minOrder: minOrder ? Number(minOrder) : null,
+      usedCount: usedCount ? Number(usedCount) : 0,
       startAt: new Date(startAt),
       expiresAt: new Date(expiresAt),
-      isActive,
-    };
+      isActive: Boolean(isActive),
+    });
 
-    await db.insert(promotion).values(promoValues);
-
-    res.status(201).json({ message: "Created Promo successfully" });
+    return res.status(201).json({
+      message: "Created Promo successfully",
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Server error",

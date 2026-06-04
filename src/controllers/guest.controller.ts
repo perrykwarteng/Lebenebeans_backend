@@ -8,17 +8,21 @@ export const getGuest = async (req: Request, res: Response) => {
   try {
     const { phone } = req.query;
 
-    if (!phone) return res.status(400).json({ message: "No number parsed" });
+    if (!phone || typeof phone !== "string") {
+      return res.status(400).json({ message: "Invalid phone number" });
+    }
 
     const guestUser = await db
       .select()
       .from(guest)
-      .where(eq(guest.phoneNumber, Number(phone)));
+      .where(eq(guest.phoneNumber, phone));
 
     const user = guestUser[0];
-    console.log(user);
 
-    res.status(200).json({ message: "Retured Guest Successfully", user });
+    return res.status(200).json({
+      message: "Returned Guest Successfully",
+      user,
+    });
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
@@ -38,9 +42,7 @@ export const getGuestHistory = async (req: Request, res: Response) => {
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderIdFk, orders.id))
       .innerJoin(guest, eq(guest.orderId, orders.id))
-      .where(
-        and(eq(guest.phoneNumber, Number(phone)), eq(orders.orderPaid, true)),
-      );
+      .where(and(eq(guest.phoneNumber, phone), eq(orders.orderPaid, true)));
 
     const result: Record<number, GroupedOrder> = {};
 
