@@ -549,10 +549,7 @@ export const changeOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { close, userId } = req.body;
-
-    console.log(close);
-    console.log(userId);
-
+    
     const closeId = Number(id);
     if (isNaN(closeId)) return res.status(400).json({ message: "Invalid id" });
     if (!close) return res.status(400).json({ message: "value is required" });
