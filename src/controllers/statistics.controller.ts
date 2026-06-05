@@ -31,6 +31,17 @@ export const statistics = async (req: Request, res: Response) => {
         ),
       );
 
+    const totalDeliveryFee = await db
+      .select({ totalDelivery: sql`SUM(${orders.deliveryFee})` })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.orderPaid, true),
+          sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
+        ),
+      );
+
+    const totalDelivery = Number(totalDeliveryFee[0]?.totalDelivery ?? 0);
     const totalRevenue = Number(totalRevenueResult[0]?.totalRevenue ?? 0);
 
     const AMOUNT_PERCENTAGE = 0.14;
@@ -40,6 +51,7 @@ export const statistics = async (req: Request, res: Response) => {
     res.status(200).json({
       totalOrders,
       totalRevenue: +totalRevenue.toFixed(2),
+      totalDelivery: totalDelivery.toFixed(2),
       AMOUNT_PERCENTAGE,
       amountToKeep,
       amountToPay,
