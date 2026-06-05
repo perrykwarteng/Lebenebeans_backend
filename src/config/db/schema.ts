@@ -148,7 +148,7 @@ export const users = mysqlTable("users", {
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
-  role: mysqlEnum(["super-admin", "sub-admin", "admin", "user"]).notNull(),
+  role: mysqlEnum(["manager", "admin", "user"]).notNull(),
 });
 
 export const promotion = mysqlTable("promotion", {

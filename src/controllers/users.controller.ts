@@ -7,9 +7,8 @@ import bcrypt from "bcrypt";
 
 const getDefaultPassword = (role: string) => {
   if (role === "admin") return "admin12345";
-  if (role === "sub-admin") return "subadmin12345";
-  if (role === "super-admin") return "superadmin12345";
-  return "admin12345";
+  if (role === "manager") return "manager12345";
+  return "password1";
 };
 
 export const getAllUser = async (req: Request, res: Response) => {
