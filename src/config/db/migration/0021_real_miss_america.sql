@@ -1,0 +1,1 @@
+ALTER TABLE `menu` ADD `available` boolean DEFAULT false NOT NULL;

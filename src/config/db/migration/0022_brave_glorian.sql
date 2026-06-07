@@ -1,0 +1,1 @@
+ALTER TABLE `menu` ADD `imageUrls` json;

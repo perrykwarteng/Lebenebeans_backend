@@ -13,7 +13,7 @@ import {
   boolean,
   json,
 } from "drizzle-orm/mysql-core";
-import { device, userInfo } from "../../types/type.js";
+import { device, imageUrls, userInfo } from "../../types/type.js";
 
 export const closeOrders = mysqlTable("closeOrders", {
   id: serial().notNull().primaryKey(),
@@ -229,6 +229,8 @@ export const menu = mysqlTable("menu", {
   name: varchar({ length: 255 }).notNull(),
   price: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
   quantity: bigint({ mode: "number", unsigned: true }).default(0),
+  imageUrls: json("imageUrls").$type<imageUrls>(),
+  available: boolean("available").default(false).notNull(),
 });
 
 export const logs = mysqlTable("logs", {
