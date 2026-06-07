@@ -549,7 +549,7 @@ export const changeOrderStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { close, userId } = req.body;
-    
+
     const closeId = Number(id);
     if (isNaN(closeId)) return res.status(400).json({ message: "Invalid id" });
     if (!close) return res.status(400).json({ message: "value is required" });
@@ -558,6 +558,8 @@ export const changeOrderStatus = async (req: Request, res: Response) => {
       .update(closeOrders)
       .set({ closeOrders: close })
       .where(eq(closeOrders.id, closeId));
+
+    io.emit("orders-close");
 
     const user = await db
       .select()

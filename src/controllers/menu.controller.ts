@@ -7,6 +7,7 @@ import {
 } from "../utils/fileUpload.js";
 import { eq } from "drizzle-orm";
 import { Device, IpAddress } from "../utils/ip.js";
+import { io } from "../index.js";
 
 export const allMenu = async (req: Request, res: Response) => {
   try {
@@ -224,12 +225,14 @@ export const toggleMenuAvailability = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { available, userId } = req.body;
 
-    await db
+    const menuAvailable = await db
       .update(menu)
       .set({
         available: available === "true" || available === true,
       })
       .where(eq(menu.id, Number(id)));
+
+    io.emit("menu-available");
 
     const user = await db.select().from(users).where(eq(users.id, userId));
 
