@@ -61,3 +61,8 @@ export type device = {
   browser: string;
   os: string;
 };
+
+export type imageUrls = {
+  imageUrl: string;
+  public_id: string;
+};

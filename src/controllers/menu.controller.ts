@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import { db } from "../config/index.js";
-import { menu } from "../config/db/schema.js";
+import { logs, menu, users } from "../config/db/schema.js";
+import {
+  deleteFromCloudinary,
+  uploadToCloudinary,
+} from "../utils/fileUpload.js";
+import { eq } from "drizzle-orm";
+import { Device, IpAddress } from "../utils/ip.js";
 
 export const allMenu = async (req: Request, res: Response) => {
   try {
@@ -12,73 +18,250 @@ export const allMenu = async (req: Request, res: Response) => {
   }
 };
 
-export const menuData = [
-  { name: "Beans with plantain and egg", price: "75.0", quantity: 0 },
-  { name: "Beans with plantain, egg and fish", price: "90.0", quantity: 0 },
-  { name: "Beans with plantain, egg and meat", price: "95.0", quantity: 0 },
-  { name: "Beans with plantain, egg and chicken", price: "90.0", quantity: 0 },
-  { name: "Beans and rice with plantain and egg", price: "85.0", quantity: 0 },
-  {
-    name: "Beans and rice with plantain, egg and chicken",
-    price: "100.0",
-    quantity: 0,
-  },
-  {
-    name: "Beans and rice with plantain, egg and meat",
-    price: "105.0",
-    quantity: 0,
-  },
-  {
-    name: "Beans and rice with plantain, egg and fish",
-    price: "100.0",
-    quantity: 0,
-  },
-  {
-    name: "Beans and rice with plantain, egg, fish and meat",
-    price: "120.0",
-    quantity: 0,
-  },
-  {
-    name: "Beans and rice with plantain, egg, fish and chicken",
-    price: "120.0",
-    quantity: 0,
-  },
-  { name: "Plain rice and stew with red fish", price: "90.0", quantity: 0 },
-  { name: "Plain rice with stew and chicken", price: "90.0", quantity: 0 },
-  { name: "Plain rice and beef", price: "90.0", quantity: 0 },
-  { name: "Fried Rice with chicken", price: "100.0", quantity: 0 },
-  { name: "Fried Rice with cow meat", price: "100.0", quantity: 0 },
-  { name: "Fried Rice with red fish", price: "100.0", quantity: 0 },
-  { name: "Jollof with chicken", price: "100.0", quantity: 0 },
-  { name: "Jollof with cow meat", price: "100.0", quantity: 0 },
-  { name: "Jollof with red fish", price: "100.0", quantity: 0 },
-  {
-    name: "Banku with okro stew (crab, Wele & Meat)",
-    price: "100.0",
-    quantity: 0,
-  },
-  {
-    name: "Banku with okro stew (crab, Wele,fish & Meat)",
-    price: "120.0",
-    quantity: 0,
-  },
-  { name: "Extra plantain", price: "10.0", quantity: 0 },
-  { name: "Extra chicken", price: "15.0", quantity: 0 },
-  { name: "Extra beef", price: "20.0", quantity: 0 },
-  { name: "Extra cow meat", price: "20.0", quantity: 0 },
-  { name: "Extra fish", price: "20.0", quantity: 0 },
-  { name: "Extra egg", price: "5.0", quantity: 0 },
-];
-
 export const addMenu = async (req: Request, res: Response) => {
+  const file = req.file?.path;
+  const { name, price, quantity, available, userId } = req.body || {};
   try {
-    const men = await db.insert(menu).values(menuData);
+    if (!file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const result = await uploadToCloudinary(file);
+
+    if (!result) {
+      return res.status(400).json({ message: "Failed to upload file" });
+    }
+
+    const imageData = {
+      imageUrl: result.secure_url,
+      public_id: result.public_id,
+    };
+
+    const men = await db.insert(menu).values({
+      name,
+      price: price.toString(),
+      quantity: Number(quantity),
+
+      imageUrls: {
+        imageUrl: result.secure_url,
+        public_id: result.public_id,
+      },
+
+      available: available === "true" || available === true,
+    });
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Create",
+      module: "Menu",
+      description: `Menu Created`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
     res.status(201).json({
       message: "Menu created successfully",
       data: men[0],
     });
   } catch (error) {
-    console.error("Add Menu Error:", error);
+    // console.error("FULL ERROR:", error);
+    // console.error("MESSAGE:", error.message);
+    // console.error("STACK:", error?.stack);
+
+    return res.status(500).json({
+      message: error || "Internal server error",
+    });
+  }
+};
+
+export const updateMenu = async (req: Request, res: Response) => {
+  try {
+    const file = req.file?.path;
+    const { id } = req.params;
+    const { name, price, quantity, available, public_id, userId } = req.body;
+
+    let imageUrls;
+
+    if (file) {
+      if (public_id) {
+        await deleteFromCloudinary(public_id);
+      }
+      const uploaded = await uploadToCloudinary(file);
+      imageUrls = {
+        imageUrl: uploaded.secure_url,
+        public_id: uploaded.public_id,
+      };
+    }
+
+    await db
+      .update(menu)
+      .set({
+        name,
+        price: price.toString(),
+        quantity: Number(quantity),
+        available: available === "true",
+
+        ...(imageUrls && {
+          imageUrls,
+        }),
+      })
+      .where(eq(menu.id, Number(id)));
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Update",
+      module: "Menu",
+      description: `Menu Updated`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
+    return res.status(200).json({
+      message: "Menu updated successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+};
+
+export const deleteMenu = async (req: Request, res: Response) => {
+  try {
+    const { id, userId } = req.params;
+
+    const existingMenu = await db
+      .select()
+      .from(menu)
+      .where(eq(menu.id, Number(id)))
+      .limit(1);
+
+    if (!existingMenu.length) {
+      return res.status(404).json({ message: "Menu not found" });
+    }
+
+    const menuItem = existingMenu[0];
+
+    if (menuItem?.imageUrls?.public_id) {
+      await deleteFromCloudinary(menuItem.imageUrls.public_id);
+    }
+
+    await db.delete(menu).where(eq(menu.id, Number(id)));
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Delete",
+      module: "Menu",
+      description: `Menu Deleted`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
+    res.status(200).json({
+      message: "Menu deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Menu Error:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const toggleMenuAvailability = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { available, userId } = req.body;
+
+    await db
+      .update(menu)
+      .set({
+        available: available === "true" || available === true,
+      })
+      .where(eq(menu.id, Number(id)));
+
+    const user = await db.select().from(users).where(eq(users.id, userId));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+
+    await db.insert(logs).values({
+      user: {
+        id: Number(user[0]?.id),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "",
+      },
+      action: "Update",
+      module: "Menu",
+      description: `Menu Availability Update`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
+    });
+
+    return res.status(200).json({
+      message: "Menu availability updated",
+    });
+  } catch (error) {
+    console.error("Toggle Availability Error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
