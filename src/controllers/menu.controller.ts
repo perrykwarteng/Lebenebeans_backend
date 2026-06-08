@@ -51,10 +51,7 @@ export const addMenu = async (req: Request, res: Response) => {
       available: available === "true" || available === true,
     });
 
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, Number(userId)));
+    const user = await db.select().from(users).where(eq(users.id, userId));
 
     const ip = IpAddress(req);
     const userDevice = Device(req);
@@ -82,10 +79,6 @@ export const addMenu = async (req: Request, res: Response) => {
       data: men[0],
     });
   } catch (error) {
-    // console.error("FULL ERROR:", error);
-    // console.error("MESSAGE:", error.message);
-    // console.error("STACK:", error?.stack);
-
     return res.status(500).json({
       message: error || "Internal server error",
     });
@@ -125,10 +118,7 @@ export const updateMenu = async (req: Request, res: Response) => {
       })
       .where(eq(menu.id, Number(id)));
 
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, Number(userId)));
+    const user = await db.select().from(users).where(eq(users.id, userId));
 
     const ip = IpAddress(req);
     const userDevice = Device(req);
@@ -156,7 +146,9 @@ export const updateMenu = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
-
+    // console.error("FULL ERROR:", error);
+    // console.error("MESSAGE:", error.message);
+    // console.error("STACK:", error?.stack);
     return res.status(500).json({
       message: "Internal server error",
     });
