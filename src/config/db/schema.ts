@@ -68,6 +68,7 @@ export const orders = mysqlTable(
     orderPaid: boolean().default(false).notNull(),
     promotion: varchar({ length: 64 }),
     createdAt: datetime({ mode: "string" }).notNull(),
+    processedAt:datetime(),
     updatedAt: datetime({ mode: "string" }).notNull(),
     legacyId: varchar({ length: 128 }),
   },

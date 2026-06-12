@@ -73,6 +73,7 @@ export const createOrders = async (req: Request, res: Response) => {
         orderPaid: false,
         completed: false,
         promotion: promoId != null ? "Promotion Order" : null,
+        processedAt: null,
         createdAt: toMysqlDatetime(now),
         updatedAt: toMysqlDatetime(now),
       })
@@ -254,7 +255,7 @@ export const webhook = async (req: Request, res: Response) => {
 
     await db
       .update(orders)
-      .set({ orderPaid: true })
+      .set({ orderPaid: true, processedAt: sql`now()` })
       .where(eq(orders.id, data.metadata.orderId));
 
     await db

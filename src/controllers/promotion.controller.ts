@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../config/index.js";
 import { promotion } from "../config/db/schema.js";
-import { PromotionType } from "../types/type.js";
 import { and, eq } from "drizzle-orm";
 
 export const createPromotion = async (req: Request, res: Response) => {
