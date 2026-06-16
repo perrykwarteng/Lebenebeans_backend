@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../config/index.js";
 import { orders } from "../config/db/schema.js";
-import { and, eq, sql } from "drizzle-orm";
+import { and, sql } from "drizzle-orm";
 import { parseDateRange } from "../utils/dateRange.js";
 
 export const statistics = async (req: Request, res: Response) => {
@@ -9,49 +9,34 @@ export const statistics = async (req: Request, res: Response) => {
     const { from, to } = req.query;
     const { startDate, endDate } = parseDateRange(from as string, to as string);
 
-    const totalOrdersResult = await db
-      .select({ count: sql`COUNT(*)` })
+    const result = await db
+      .select({
+        totalOrders: sql<number>`COUNT(*)`,
+        totalRevenue: sql<number>`COALESCE(SUM(${orders.priceOfFood}), 0)`,
+        totalDelivery: sql<number>`COALESCE(SUM(${orders.deliveryFee}), 0)`,
+      })
       .from(orders)
       .where(
         and(
-          eq(orders.orderPaid, true),
-          sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
+          sql`${orders.orderPaid} = 1`,
+          sql`LEFT(${orders.createdAt}, 10) BETWEEN ${startDate} AND ${endDate}`,
         ),
       );
 
-    const totalOrders = Number(totalOrdersResult[0]?.count ?? 0);
+    const row = result[0];
 
-    const totalRevenueResult = await db
-      .select({ totalRevenue: sql`SUM(${orders.priceOfFood})` })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.orderPaid, true),
-          sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
-        ),
-      );
-
-    const totalDeliveryFee = await db
-      .select({ totalDelivery: sql`SUM(${orders.deliveryFee})` })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.orderPaid, true),
-          sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
-        ),
-      );
-
-    const totalDelivery = Number(totalDeliveryFee[0]?.totalDelivery ?? 0);
-    const totalRevenue = Number(totalRevenueResult[0]?.totalRevenue ?? 0);
+    const totalOrders = Number(row!.totalOrders) || 0;
+    const totalRevenue = Number(row!.totalRevenue) || 0;
+    const totalDelivery = Number(row!.totalDelivery) || 0;
 
     const AMOUNT_PERCENTAGE = 0.14;
-    const amountToKeep = +(totalRevenue * AMOUNT_PERCENTAGE).toFixed(2);
-    const amountToPay = +(totalRevenue - amountToKeep).toFixed(2);
+    const amountToKeep = Number((totalRevenue * AMOUNT_PERCENTAGE).toFixed(2));
+    const amountToPay = Number((totalRevenue - amountToKeep).toFixed(2));
 
-    res.status(200).json({
+    return res.json({
       totalOrders,
-      totalRevenue: +totalRevenue.toFixed(2),
-      totalDelivery: totalDelivery.toFixed(2),
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      totalDelivery: Number(totalDelivery.toFixed(2)),
       AMOUNT_PERCENTAGE,
       amountToKeep,
       amountToPay,
@@ -59,6 +44,6 @@ export const statistics = async (req: Request, res: Response) => {
       to: endDate,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    return res.status(500).json({ message: "Server error", error });
   }
 };
