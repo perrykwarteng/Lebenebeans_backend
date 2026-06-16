@@ -1,54 +1,55 @@
-// export const parseDateRange = (from?: string, to?: string) => {
-//   const now = new Date();
-//   let startDate: string;
-//   let endDate: string;
-
-//   if (from && to) {
-//     startDate = new Date(from).toISOString();
-//     endDate = new Date(new Date(to).setHours(23, 59, 59, 999)).toISOString();
-//   } else if (from) {
-//     startDate = new Date(from).toISOString();
-//     endDate = now.toISOString();
-//   } else if (to) {
-//     startDate = new Date(
-//       now.getFullYear(),
-//       now.getMonth(),
-//       now.getDate(),
-//     ).toISOString();
-//     endDate = new Date(new Date(to).setHours(23, 59, 59, 999)).toISOString();
-//   } else {
-//     startDate = new Date(
-//       now.getFullYear(),
-//       now.getMonth() - 1,
-//       now.getDate(),
-//     ).toISOString();
-//     endDate = now.toISOString();
-//   }
-//   return { startDate, endDate };
-// };
-
 export const parseDateRange = (from?: string, to?: string) => {
   const now = new Date();
 
   let startDate: string;
   let endDate: string;
 
+  // BOTH FROM AND TO
   if (from && to) {
-    startDate = from.slice(0, 10);
-    endDate = to.slice(0, 10);
-  } else if (from) {
-    startDate = from.slice(0, 10);
-    endDate = now.toISOString().slice(0, 10);
-  } else if (to) {
-    endDate = to.slice(0, 10);
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
-  } else {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .slice(0, 10);
-    endDate = now.toISOString().slice(0, 10);
+    const start = new Date(from);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+
+    startDate = start.toISOString();
+    endDate = end.toISOString();
+  }
+
+  // ONLY FROM
+  else if (from) {
+    const start = new Date(from);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    startDate = start.toISOString();
+    endDate = end.toISOString();
+  }
+
+  // ONLY TO
+  else if (to) {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+
+    startDate = start.toISOString();
+    endDate = end.toISOString();
+  }
+
+  // DEFAULT (current month)
+  else {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    startDate = start.toISOString();
+    endDate = end.toISOString();
   }
 
   return { startDate, endDate };
