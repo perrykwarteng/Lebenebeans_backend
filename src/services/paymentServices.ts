@@ -59,6 +59,7 @@ export const initaitHubtelPay = async (data: {
   deliveryFee: number;
   foodCost: number;
   deliveryType: string;
+  name?: string;
 }) => {
   try {
     const dataDisplay = JSON.stringify(data);
@@ -74,6 +75,7 @@ export const initaitHubtelPay = async (data: {
         cancellationUrl: process.env.HUBTEL_RETURN_URL,
         clientReference: data.ordId.toString(),
         payeeMobileNumber: data.number,
+        payeeName: data.name,
       },
       {
         headers: {

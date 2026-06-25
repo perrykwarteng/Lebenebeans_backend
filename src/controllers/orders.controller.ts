@@ -149,6 +149,7 @@ export const createOrders = async (req: Request, res: Response) => {
           deliveryFee,
           foodCost,
           deliveryType,
+          name,
         });
       }
       if (paymentMethod === "Paystack") {
