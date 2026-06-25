@@ -169,6 +169,13 @@
       "when": 1781285136578,
       "tag": "0023_complex_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1782208680384,
+      "tag": "0024_romantic_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

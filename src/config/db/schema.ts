@@ -68,7 +68,7 @@ export const orders = mysqlTable(
     orderPaid: boolean().default(false).notNull(),
     promotion: varchar({ length: 64 }),
     createdAt: datetime({ mode: "string" }).notNull(),
-    processedAt:datetime(),
+    processedAt: datetime(),
     updatedAt: datetime({ mode: "string" }).notNull(),
     legacyId: varchar({ length: 128 }),
   },
@@ -138,6 +138,7 @@ export const transactions = mysqlTable("transactions", {
   status: mysqlEnum(["pending", "success", "failed"]).notNull(),
   reference: varchar({ length: 255 }),
   paymentsMethod: varchar({ length: 255 }),
+  paymentNumber: bigint({ mode: "number", unsigned: true }),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
 

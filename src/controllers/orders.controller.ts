@@ -19,6 +19,10 @@ import { eq, and, sql, or } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 import { Device, IpAddress } from "../utils/ip.js";
+import {
+  initaitHubtelPay,
+  initaitPayStackPay,
+} from "../services/paymentServices.js";
 
 dotenv.config();
 
@@ -35,6 +39,7 @@ export const createOrders = async (req: Request, res: Response) => {
       foodCost,
       totalPrice,
       promoId,
+      paymentMethod,
     } = req.body;
 
     if (
@@ -50,145 +55,145 @@ export const createOrders = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Fill all required fields" });
     }
 
-    const id = crypto.randomBytes(6).toString("hex");
-    function toMysqlDatetime(date: Date) {
-      return date.toISOString().slice(0, 19).replace("T", " ");
+    if (!paymentMethod) {
+      return res.status(400).json({ message: "Payment type is required" });
     }
+
+    const id = crypto.randomBytes(6).toString("hex");
+
+    const toMysqlDatetime = (date: Date) =>
+      date.toISOString().slice(0, 19).replace("T", " ");
 
     const now = new Date();
 
-    const createOrder = (await db
-      .insert(orders)
-      .values({
-        orderId: id,
-        date: Date.now(),
-        name,
-        phoneNumber: number,
-        amount: totalPrice,
-        note,
-        location,
-        deliveryFee,
-        deliveryType,
-        priceOfFood: foodCost,
-        orderPaid: false,
-        completed: false,
-        promotion: promoId != null ? "Promotion Order" : null,
-        processedAt: null,
-        createdAt: toMysqlDatetime(now),
-        updatedAt: toMysqlDatetime(now),
-      })
-      .$returningId()) as { id: number }[];
+    const result = await db.transaction(async (tx) => {
+      const createdOrder = (await tx
+        .insert(orders)
+        .values({
+          orderId: id,
+          date: Date.now(),
+          name,
+          phoneNumber: number,
+          amount: totalPrice,
+          note,
+          location,
+          deliveryFee,
+          deliveryType,
+          priceOfFood: foodCost,
+          orderPaid: false,
+          completed: false,
+          promotion: promoId != null ? "Promotion Order" : null,
+          processedAt: null,
+          createdAt: toMysqlDatetime(now),
+          updatedAt: toMysqlDatetime(now),
+        })
+        .$returningId()) as { id: number }[];
 
-    const ordId = createOrder[0]?.id;
+      const ordId = createdOrder[0]?.id;
 
-    if (!ordId) return res.status(400).json({ message: "Order Id not found" });
+      if (!ordId) throw new Error("Order Id not found");
 
-    await db.insert(orderItems).values(
-      order.map((item) => ({
-        ...item,
-        orderIdFk: ordId,
-      })),
-    );
+      await tx.insert(orderItems).values(
+        order.map((item) => ({
+          ...item,
+          orderIdFk: ordId,
+        })),
+      );
 
-    if (promoId != null) {
-      const getPromo = await db
-        .select()
-        .from(promotion)
-        .where(eq(promotion.id, promoId));
+      if (promoId != null) {
+        const getPromo = await tx
+          .select()
+          .from(promotion)
+          .where(eq(promotion.id, promoId));
 
-      const promo = getPromo?.[0];
+        const promo = getPromo?.[0];
 
-      if (!promo) {
-        throw new Error("Invalid or missing promotion");
+        if (!promo) throw new Error("Invalid promotion");
+
+        await tx
+          .update(promotion)
+          .set({
+            usedCount: sql`${promotion.usedCount} + 1`,
+          })
+          .where(eq(promotion.id, promoId));
+
+        await tx.insert(promotionList).values({
+          orderId: ordId,
+          promotionId: promoId,
+          code: promo.code,
+          type: promo.type,
+        });
       }
 
-      await db
-        .update(promotion)
-        .set({
-          usedCount: sql`${promotion.usedCount} + 1`,
-        })
-        .where(eq(promotion.id, promoId));
-
-      await db.insert(promotionList).values({
+      await tx.insert(payments).values({
         orderId: ordId,
-        promotionId: promoId,
-        code: promo.code,
-        type: promo.type,
-      });
-    }
-
-    await db.insert(payments).values({
-      orderId: ordId,
-      paymentStatus: "pending",
-      totalAmount: totalPrice,
-    });
-
-    await db.insert(guest).values({
-      orderId: ordId,
-      name: name,
-      phoneNumber: number,
-    });
-
-    const initaitPayment = await axios.post(
-      "https://api.paystack.co/transaction/initialize",
-      {
-        email: `${number}@customer.com`,
-        amount: totalPrice * 100,
-        callback_url: process.env.PAYSTACK_CALLBACK_URL,
-        metadata: {
-          orderId: ordId,
-          orderItems: order,
-          deliveryLocation: location || "No location",
-          deliveryFee: deliveryFee || 0.0,
-          foodCost: foodCost,
-          deliveryType: deliveryType,
-          phoneNumber: number,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (initaitPayment.data.status === true) {
-      await db.insert(transactions).values({
-        orderId: ordId,
-        amount: totalPrice,
-        status: "pending",
-        reference: initaitPayment.data.data.reference,
-        paymentsMethod: "",
-      });
-    } else {
-      await db.insert(transactions).values({
-        orderId: ordId,
-        amount: totalPrice,
-        status: "failed",
-        reference: initaitPayment.data.data.reference,
-        paymentsMethod: "",
-      });
-
-      await db.insert(payments).values({
-        orderId: ordId,
-        paymentStatus: "failed",
+        paymentStatus: "pending",
         totalAmount: totalPrice,
       });
 
-      res.status(400).json({
-        message: "Failed initiating Payment",
-        data: initaitPayment.data,
+      await tx.insert(guest).values({
+        orderId: ordId,
+        name,
+        phoneNumber: number,
       });
-    }
+
+      let initaitPayment;
+
+      if (paymentMethod === "Hubtel") {
+        initaitPayment = await initaitHubtelPay({
+          number,
+          totalPrice,
+          ordId,
+          order,
+          location,
+          deliveryFee,
+          foodCost,
+          deliveryType,
+        });
+      }
+      if (paymentMethod === "Paystack") {
+        initaitPayment = await initaitPayStackPay({
+          number,
+          totalPrice,
+          ordId,
+          order,
+          location,
+          deliveryFee,
+          foodCost,
+          deliveryType,
+        });
+      }
+
+      await tx.insert(transactions).values({
+        orderId: ordId,
+        amount: totalPrice,
+        status: initaitPayment?.status ? "pending" : "failed",
+        reference:
+          initaitPayment?.data?.reference ||
+          initaitPayment?.data?.clientReference ||
+          null,
+        paymentsMethod: "",
+        paymentNumber: 0,
+      });
+
+      const status = initaitPayment?.status;
+      const isSuccess =
+        status === true || String(status).toLowerCase() === "success";
+
+      if (!isSuccess) {
+        throw new Error("Payment initialization failed");
+      }
+
+      return { ordId, initaitPayment };
+    });
 
     const ip = IpAddress(req);
     const userDevice = Device(req);
 
     await db.insert(logs).values({
       user: {
-        id: ordId,
-        name: name,
+        id: result.ordId,
+        name,
         email: number,
       },
       action: "Create",
@@ -203,9 +208,9 @@ export const createOrders = async (req: Request, res: Response) => {
       status: "success",
     });
 
-    res.status(201).json({
-      message: "Order Ceated successfully",
-      data: initaitPayment.data,
+    return res.status(201).json({
+      message: "Order Created successfully",
+      data: result.initaitPayment.data,
     });
   } catch (error) {
     return res.status(500).json({
@@ -233,43 +238,133 @@ export const webhook = async (req: Request, res: Response) => {
       return res.status(200).send("Ignored");
     }
 
-    const existing = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.reference, data.reference));
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.reference, data.reference));
 
-    if (!existing.length) return res.status(404).send("Not found");
+      if (!existing.length) return res.status(404).send("Not found");
 
-    if (existing[0]?.status === "success") {
-      return res.status(200).send("Already processed");
-    }
+      if (existing[0]?.status === "success") {
+        return res.status(200).send("Already processed");
+      }
 
-    await db
-      .update(transactions)
-      .set({
-        status: "success",
-        paymentsMethod: data.authorization?.channel || "unknown",
-      })
-      .where(eq(transactions.reference, data.reference))
-      .execute();
+      await tx
+        .update(transactions)
+        .set({
+          status: "success",
+          paymentsMethod: data.authorization?.channel || "unknown",
+          paymentNumber: data?.customer?.phone || 0,
+        })
+        .where(eq(transactions.reference, data.reference))
+        .execute();
 
-    await db
-      .update(orders)
-      .set({ orderPaid: true, processedAt: sql`now()` })
-      .where(eq(orders.id, data.metadata.orderId));
+      await tx
+        .update(orders)
+        .set({ orderPaid: true, processedAt: sql`now()` })
+        .where(eq(orders.id, data.metadata.orderId));
 
-    await db
-      .update(payments)
-      .set({ paymentStatus: "success" })
-      .where(eq(payments.orderId, data.metadata.orderId));
+      await tx
+        .update(payments)
+        .set({ paymentStatus: "success" })
+        .where(eq(payments.orderId, data.metadata.orderId));
 
-    io.emit("new-order", existing[0]);
+      io.emit("new-order", existing[0]);
+    });
 
     return res.status(200).json({ message: "Webhook Okay" });
   } catch (error: any) {
     return res
       .status(500)
       .json({ message: "Webhook error", error: error.message });
+  }
+};
+
+export const hubtelWebhook = async (req: Request, res: Response) => {
+  try {
+    const { Status, Data } = req.body;
+
+    if (Status !== "Success") {
+      console.log("Payment not successful");
+      return res.sendStatus(200);
+    }
+
+    const { ClientReference, Amount, PaymentDetails } = Data || {};
+
+    const paymentMethod = PaymentDetails?.PaymentType;
+    const paymentNumber = PaymentDetails?.MobileMoneyNumber;
+
+    if (!ClientReference) {
+      console.log("Missing ClientReference");
+      return res.sendStatus(200);
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const existing = await tx
+        .select()
+        .from(transactions)
+        .where(eq(transactions.reference, ClientReference));
+
+      if (!existing.length) {
+        console.log("Transaction not found:", ClientReference);
+        return { status: "not_found" };
+      }
+
+      const transaction = existing[0];
+
+      if (Status === "success") {
+        console.log("Already processed:", ClientReference);
+        return { status: "already_processed" };
+      }
+
+      await tx
+        .update(transactions)
+        .set({
+          status: "success",
+          paymentsMethod: paymentMethod || "unknown",
+          paymentNumber: paymentNumber || 0,
+          amount: Amount,
+        })
+        .where(eq(transactions.reference, ClientReference));
+
+      await tx
+        .update(orders)
+        .set({ orderPaid: true, processedAt: sql`now()` })
+        .where(eq(orders.id, Number(transaction?.orderId)));
+
+      await tx
+        .update(payments)
+        .set({
+          paymentStatus: "success",
+        })
+        .where(eq(payments.orderId, ClientReference));
+
+      return { status: "success", transaction };
+    });
+
+    if (result.status === "not_found") {
+      console.log(`Transaction not found: ${ClientReference}`);
+      return res.sendStatus(200);
+    }
+
+    if (result.status === "already_processed") {
+      console.log(`Already processed: ${ClientReference}`);
+      return res.sendStatus(200);
+    }
+
+    io.emit("new-order", {
+      reference: ClientReference,
+      status: "success",
+    });
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error("Hubtel webhook error:", error);
+
+    if (!res.headersSent) {
+      return res.sendStatus(200);
+    }
   }
 };
 
