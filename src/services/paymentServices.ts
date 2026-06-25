@@ -67,7 +67,7 @@ export const initaitHubtelPay = async (data: {
       "https://payproxyapi.hubtel.com/items/initiate",
       {
         totalAmount: data.totalPrice,
-        description: dataDisplay,
+        description: `Payment of #Order:${data.ordId}`,
         callbackUrl: process.env.HUBTEL_CALLBACK_URL,
         returnUrl: process.env.HUBTEL_RETURN_URL,
         merchantAccountNumber: process.env.HUBTEL_MERCHANT_ACCOUNT_NUMBER,
