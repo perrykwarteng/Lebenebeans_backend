@@ -12,6 +12,7 @@ import {
   FailedOrders,
   deleteStatus,
   hubtelWebhook,
+  statusTransaction,
 } from "../controllers/orders.controller.js";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 
@@ -25,6 +26,7 @@ router.patch("/orderDelivered/:id", requireAuth, deliveredStatus);
 router.patch("/orderCancel/:id", requireAuth, cancelStatus);
 router.delete("/orderDelete/:id", requireAuth, deleteStatus);
 router.get("/verify/:reference", verifyTransaction);
+router.get("/transactionStatus/:clientReference", statusTransaction);
 router.post("/webhook", webhook);
 router.post("/webhook-hubtel", hubtelWebhook);
 router.get("/closeOrder", closeOrder);

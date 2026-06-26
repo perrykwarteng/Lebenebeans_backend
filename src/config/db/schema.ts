@@ -249,3 +249,12 @@ export const logs = mysqlTable("logs", {
   status: mysqlEnum(["success", "pending", "failed"]).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
+
+export const paymentMethod = mysqlTable("paymentMethod", {
+  id: bigint({ mode: "number", unsigned: true })
+    .autoincrement()
+    .notNull()
+    .primaryKey(),
+  paymentType: mysqlEnum(["Hubtel", "Paystack"]).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});

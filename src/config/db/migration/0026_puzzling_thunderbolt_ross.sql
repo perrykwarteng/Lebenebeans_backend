@@ -1,0 +1,1 @@
+ALTER TABLE `paymentMethod` RENAME COLUMN `paymentMethod` TO `paymentType`;

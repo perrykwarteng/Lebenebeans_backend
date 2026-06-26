@@ -10,6 +10,7 @@ import {
   guest,
   logs,
   users,
+  paymentMethod,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -20,6 +21,7 @@ import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 import { Device, IpAddress } from "../utils/ip.js";
 import {
+  credentials,
   initaitHubtelPay,
   initaitPayStackPay,
 } from "../services/paymentServices.js";
@@ -39,7 +41,6 @@ export const createOrders = async (req: Request, res: Response) => {
       foodCost,
       totalPrice,
       promoId,
-      paymentMethod,
     } = req.body;
 
     if (
@@ -55,8 +56,13 @@ export const createOrders = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Fill all required fields" });
     }
 
-    if (!paymentMethod) {
-      return res.status(400).json({ message: "Payment type is required" });
+    const paymentType = await db.select().from(paymentMethod);
+    const payment = paymentType[0]?.paymentType;
+    if (!payment) {
+      return res.status(400).json({
+        message:
+          "No payment method has been configured yet. Please set one and try again.",
+      });
     }
 
     const id = crypto.randomBytes(6).toString("hex");
@@ -139,7 +145,7 @@ export const createOrders = async (req: Request, res: Response) => {
 
       let initaitPayment;
 
-      if (paymentMethod === "Hubtel") {
+      if (payment === "Hubtel") {
         initaitPayment = await initaitHubtelPay({
           number,
           totalPrice,
@@ -152,7 +158,7 @@ export const createOrders = async (req: Request, res: Response) => {
           name,
         });
       }
-      if (paymentMethod === "Paystack") {
+      if (payment === "Paystack") {
         initaitPayment = await initaitPayStackPay({
           number,
           totalPrice,
@@ -284,6 +290,8 @@ export const webhook = async (req: Request, res: Response) => {
 
 export const hubtelWebhook = async (req: Request, res: Response) => {
   try {
+    console.log(req.body);
+
     const { Status, Data } = req.body;
 
     if (Status !== "Success") {
@@ -291,6 +299,7 @@ export const hubtelWebhook = async (req: Request, res: Response) => {
       return res.sendStatus(200);
     }
 
+    console.log(Data);
     const { ClientReference, Amount, PaymentDetails } = Data || {};
 
     const paymentMethod = PaymentDetails?.PaymentType;
@@ -395,6 +404,44 @@ export const verifyTransaction = async (req: Request, res: Response) => {
     return res.status(500).json({
       message: "Internal server error",
       error,
+    });
+  }
+};
+export const statusTransaction = async (req: Request, res: Response) => {
+  try {
+    const { clientReference } = req.params;
+
+    if (!clientReference) {
+      return res.status(400).json({ message: "Reference not available" });
+    }
+
+    console.log({
+      merchant: process.env.HUBTEL_MERCHANT_ACCOUNT_NUMBER,
+      clientReference,
+      auth: credentials,
+    });
+
+    const statusPayment = await axios.get(
+      `https://api-txnstatus.hubtel.com/transacions/${process.env.HUBTEL_MERCHANT_ACCOUNT_NUMBER}/statusclientReference=${clientReference}`,
+      {
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    console.log(statusPayment);
+
+    const data = statusPayment.data;
+    return res.status(200).json({
+      message: "Transaction Verified",
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal serer error",
+      hubtelError: error,
     });
   }
 };

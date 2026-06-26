@@ -62,8 +62,6 @@ export const initaitHubtelPay = async (data: {
   name?: string;
 }) => {
   try {
-    const dataDisplay = JSON.stringify(data);
-
     const initaitPayment = await axios.post(
       "https://payproxyapi.hubtel.com/items/initiate",
       {

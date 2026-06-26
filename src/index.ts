@@ -11,6 +11,7 @@ import guestRouter from "./routes/guest.route.js";
 import menuRouter from "./routes/menu.route.js";
 import logRouter from "./routes/logs.route.js";
 import userRouter from "./routes/users.routes.js";
+import settingsRoute from "./routes/settings.route.js";
 import http from "http";
 import { Server } from "socket.io";
 
@@ -46,6 +47,7 @@ app.use("/api/guest", guestRouter);
 app.use("/api/menus", menuRouter);
 app.use("/api/logs", logRouter);
 app.use("/api/users", userRouter);
+app.use("/api/settings", settingsRoute);
 
 io.on("connection", (socket) => {
   socket;

@@ -176,6 +176,20 @@
       "when": 1782208680384,
       "tag": "0024_romantic_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1782472240790,
+      "tag": "0025_aspiring_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1782472386679,
+      "tag": "0026_puzzling_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }
