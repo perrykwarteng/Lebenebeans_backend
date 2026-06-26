@@ -4,8 +4,11 @@ import { deliveryLocations, logs, users } from "../config/db/schema.js";
 import { eq } from "drizzle-orm/mysql-core/expressions";
 import { toMysqlDatetime } from "../utils/dateFormat.js";
 import { Device, IpAddress } from "../utils/ip.js";
+import axios from "axios";
 
 const now = new Date();
+
+const normalize = (text: string) => text.toLowerCase();
 
 export const allLocation = async (req: Request, res: Response) => {
   try {
@@ -60,7 +63,6 @@ export const addLocation = async (req: Request, res: Response) => {
       data: loc[0],
     });
   } catch (error) {
-    console.error("Add Location Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -153,5 +155,71 @@ export const deleteLocation = async (req: Request, res: Response) => {
       .json({ message: "Location Deleted Successfully", data: loc });
   } catch (error) {
     res.status(500).json({ message: "Internal server error", error });
+  }
+};
+
+export const getlocation = async (req: Request, res: Response) => {
+  try {
+    const { location } = req.body;
+
+    if (!location) {
+      return res.status(400).json({ message: "Location is required" });
+    }
+
+    const userInput = normalize(location);
+
+    const zones = await db.select().from(deliveryLocations);
+
+    const match = zones.find((zone) =>
+      normalize(zone.name).includes(userInput),
+    );
+
+    if (match) {
+      return res.status(200).json({
+        status: "matched",
+        area: match.name,
+        fee: match.price,
+      });
+    }
+
+    const google = await axios.get(
+      "https://maps.googleapis.com/maps/api/place/autocomplete/json",
+      {
+        params: {
+          input: location,
+          key: process.env.GOOGLE_API_KEY,
+          components: "country:gh",
+        },
+      },
+    );
+
+    if (google.data.status !== "OK") {
+      console.log("Google API error:", google.data);
+
+      return res.status(500).json({
+        status: "google_error",
+        message: google.data.status,
+        error: google.data.error_message,
+      });
+    }
+
+    const prediction = google.data.predictions?.[0];
+
+    if (!prediction) {
+      return res.status(404).json({
+        status: "not_found",
+        message: "No matching location found",
+      });
+    }
+
+    return res.status(200).json({
+      status: "suggestion",
+      suggestion: prediction.description,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error",
+      error: error instanceof Error ? error.message : error,
+    });
   }
 };
