@@ -44,8 +44,11 @@ export const initaitPayStackPay = async (data: {
     );
 
     return initaitPayment.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Paystack Payment initiation failed", error);
+    console.error("Status:", error.response?.status);
+    console.error("Data:", error.response?.data);
+    console.error("Message:", error.message);
     throw new Error("Failed to initiate payment");
   }
 };

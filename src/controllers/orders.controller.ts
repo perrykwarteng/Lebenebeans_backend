@@ -11,6 +11,7 @@ import {
   logs,
   users,
   paymentMethod,
+  promotionCodes,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -41,7 +42,11 @@ export const createOrders = async (req: Request, res: Response) => {
       foodCost,
       totalPrice,
       promoId,
+      promoCode,
+      source,
     } = req.body;
+
+    console.log(req.body);
 
     if (
       !order ||
@@ -51,70 +56,97 @@ export const createOrders = async (req: Request, res: Response) => {
       !number ||
       !deliveryType ||
       !foodCost ||
-      !totalPrice
+      !totalPrice ||
+      !source
     ) {
-      return res.status(400).json({ message: "Fill all required fields" });
-    }
-
-    const paymentType = await db.select().from(paymentMethod);
-    const payment = paymentType[0]?.paymentType;
-    if (!payment) {
       return res.status(400).json({
-        message:
-          "No payment method has been configured yet. Please set one and try again.",
+        message: "Fill all required fields",
       });
     }
 
-    const id = crypto.randomBytes(6).toString("hex");
+    const paymentConfig = await db.select().from(paymentMethod);
+
+    const payment = paymentConfig[0]?.paymentType;
+
+    if (!payment) {
+      return res.status(400).json({
+        message: "No payment method has been configured yet.",
+      });
+    }
+
+    const orderReference = crypto.randomBytes(6).toString("hex");
+
+    const now = new Date();
 
     const toMysqlDatetime = (date: Date) =>
       date.toISOString().slice(0, 19).replace("T", " ");
 
-    const now = new Date();
+    let finalAmount = Number(totalPrice);
+
+    if (promoId != null) {
+      const promo = (
+        await db.select().from(promotion).where(eq(promotion.id, promoId))
+      )[0];
+
+      if (!promo) {
+        return res.status(400).json({
+          message: "Invalid promotion",
+        });
+      }
+
+      if (!promo.isActive) {
+        return res.status(400).json({
+          message: "This promotion is inactive",
+        });
+      }
+
+      if (promo.startAt > now) {
+        return res.status(400).json({
+          message: "Promotion has not started",
+        });
+      }
+
+      if (promo.expiresAt < now) {
+        return res.status(400).json({
+          message: "Promotion has expired",
+        });
+      }
+
+      const discount = promo.orderDiscount
+        ? Number(promo.orderDiscount) / 100
+        : 0;
+
+      finalAmount = Number(totalPrice) - Number(totalPrice) * discount;
+    }
 
     const result = await db.transaction(async (tx) => {
-      const createdOrder = (await tx
-        .insert(orders)
-        .values({
-          orderId: id,
-          date: Date.now(),
-          name,
-          phoneNumber: number,
-          amount: totalPrice,
-          note,
-          location,
-          deliveryFee,
-          deliveryType,
-          priceOfFood: foodCost,
-          orderPaid: false,
-          completed: false,
-          promotion: promoId != null ? "Promotion Order" : null,
-          processedAt: null,
-          createdAt: toMysqlDatetime(now),
-          updatedAt: toMysqlDatetime(now),
-        })
-        .$returningId()) as { id: number }[];
-
-      const ordId = createdOrder[0]?.id;
-
-      if (!ordId) throw new Error("Order Id not found");
-
-      await tx.insert(orderItems).values(
-        order.map((item) => ({
-          ...item,
-          orderIdFk: ordId,
-        })),
-      );
+      let promoData: any = null;
 
       if (promoId != null) {
-        const getPromo = await tx
-          .select()
-          .from(promotion)
-          .where(eq(promotion.id, promoId));
+        const updatePromo = await tx
+          .update(promotionCodes)
+          .set({
+            isUsed: true,
+          })
+          .where(
+            and(
+              eq(promotionCodes.promotionId, promoId),
+              eq(promotionCodes.code, promoCode),
+              eq(promotionCodes.isUsed, false),
+            ),
+          );
 
-        const promo = getPromo?.[0];
-
-        if (!promo) throw new Error("Invalid promotion");
+        promoData = (
+          await tx
+            .select()
+            .from(promotionCodes)
+            .where(
+              and(
+                eq(promotionCodes.promotionId, promoId),
+                eq(promotionCodes.code, promoCode),
+              ),
+            )
+        )[0];
 
         await tx
           .update(promotion)
@@ -122,90 +154,152 @@ export const createOrders = async (req: Request, res: Response) => {
             usedCount: sql`${promotion.usedCount} + 1`,
           })
           .where(eq(promotion.id, promoId));
+      }
+
+      const created = await tx
+        .insert(orders)
+        .values({
+          orderId: orderReference,
+          date: Date.now(),
+          name,
+          phoneNumber: number,
+          amount: finalAmount.toString(),
+          note,
+          location,
+          deliveryFee,
+          deliveryType,
+          priceOfFood: foodCost,
+          orderPaid: false,
+          completed: false,
+          promotion: promoId ? "Promotion Order" : null,
+          processedAt: null,
+          source,
+          createdAt: toMysqlDatetime(now),
+          updatedAt: toMysqlDatetime(now),
+        })
+        .$returningId();
+
+      const orderDbId = created[0]?.id;
+
+      if (!orderDbId) {
+        throw new Error("Order ID not found");
+      }
+
+      await tx.insert(orderItems).values(
+        order.map((item: any) => ({
+          ...item,
+          orderIdFk: orderDbId,
+        })),
+      );
+
+      if (promoId != null) {
+        const promo = (
+          await tx.select().from(promotion).where(eq(promotion.id, promoId))
+        )[0];
+
+        if (!promo) {
+          throw new Error("Promotion not found");
+        }
 
         await tx.insert(promotionList).values({
-          orderId: ordId,
-          promotionId: promoId,
+          orderId: orderDbId,
+          promotionId: promo.id,
+          promotionCodeId: promoData?.id,
           code: promo.code,
           type: promo.type,
         });
       }
 
       await tx.insert(payments).values({
-        orderId: ordId,
+        orderId: orderDbId,
         paymentStatus: "pending",
-        totalAmount: totalPrice,
+        totalAmount: finalAmount.toString(),
       });
 
       await tx.insert(guest).values({
-        orderId: ordId,
+        orderId: orderDbId,
         name,
         phoneNumber: number,
       });
 
-      let initaitPayment;
-
-      if (payment === "Hubtel") {
-        initaitPayment = await initaitHubtelPay({
-          number,
-          totalPrice,
-          ordId,
-          order,
-          location,
-          deliveryFee,
-          foodCost,
-          deliveryType,
-          name,
-        });
-      }
-      if (payment === "Paystack") {
-        initaitPayment = await initaitPayStackPay({
-          number,
-          totalPrice,
-          ordId,
-          order,
-          location,
-          deliveryFee,
-          foodCost,
-          deliveryType,
-        });
-      }
-
-      await tx.insert(transactions).values({
-        orderId: ordId,
-        amount: totalPrice,
-        status: initaitPayment?.status ? "pending" : "failed",
-        reference:
-          initaitPayment?.data?.reference ||
-          initaitPayment?.data?.clientReference ||
-          null,
-        paymentsMethod: "",
-        paymentNumber: 0,
-      });
-
-      const status = initaitPayment?.status;
-      const isSuccess =
-        status === true || String(status).toLowerCase() === "success";
-
-      if (!isSuccess) {
-        throw new Error("Payment initialization failed");
-      }
-
-      return { ordId, initaitPayment };
+      return {
+        orderId: orderDbId,
+        finalAmount,
+      };
     });
+
+    // let orderId = result.orderId;
+
+    let initPayment;
+
+    if (payment === "Hubtel") {
+      initPayment = await initaitHubtelPay({
+        number,
+        totalPrice: result.finalAmount,
+        ordId: result.orderId,
+        order,
+        location,
+        deliveryFee,
+        foodCost,
+        deliveryType,
+        name,
+      });
+    }
+
+    if (payment === "Paystack") {
+      initPayment = await initaitPayStackPay({
+        number,
+        totalPrice: result.finalAmount,
+        ordId: result.orderId,
+        order,
+        location,
+        deliveryFee,
+        foodCost,
+        deliveryType,
+      });
+    }
+
+    if (!initPayment || !initPayment.data) {
+      await db
+        .update(payments)
+        .set({
+          paymentStatus: "failed",
+        })
+        .where(eq(payments.orderId, result.orderId));
+
+      throw new Error("Payment initialization failed");
+    }
+
+    await db.insert(transactions).values({
+      orderId: result.orderId,
+      amount: result.finalAmount.toString(),
+      status: "pending",
+      reference:
+        initPayment?.data?.reference ||
+        initPayment?.data?.clientReference ||
+        null,
+      paymentsMethod: payment,
+      paymentNumber: number,
+    });
+
+    await db
+      .update(payments)
+      .set({
+        paymentStatus: "pending",
+      })
+      .where(eq(payments.orderId, result.orderId));
 
     const ip = IpAddress(req);
     const userDevice = Device(req);
-
     await db.insert(logs).values({
       user: {
-        id: result.ordId,
+        id: result.orderId,
         name,
         email: number,
       },
       action: "Create",
       module: "Order",
-      description: `Made an order ${id}`,
+      description: `Made an order ${orderReference}`,
       ipAddress: ip,
       device: {
         type: userDevice.type,
@@ -217,9 +311,11 @@ export const createOrders = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: "Order Created successfully",
-      data: result.initaitPayment.data,
+      data: initPayment.data,
+      promo: promoId != null ? "Promo has been applied successfully" : null,
     });
   } catch (error) {
+    console.error("CREATE ORDER ERROR:", error);
     return res.status(500).json({
       message: "Server error",
       error: error instanceof Error ? error.message : error,
@@ -262,7 +358,7 @@ export const webhook = async (req: Request, res: Response) => {
         .set({
           status: "success",
           paymentsMethod: data.authorization?.channel || "unknown",
-          paymentNumber: data?.customer?.phone || 0,
+          paymentNumber: data?.authorization?.mobile_money_number,
         })
         .where(eq(transactions.reference, data.reference))
         .execute();

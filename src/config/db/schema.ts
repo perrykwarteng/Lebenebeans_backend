@@ -69,6 +69,7 @@ export const orders = mysqlTable(
     promotion: varchar({ length: 64 }),
     createdAt: datetime({ mode: "string" }).notNull(),
     processedAt: datetime(),
+    source: varchar({ length: 255 }).default("website").notNull(),
     updatedAt: datetime({ mode: "string" }).notNull(),
     legacyId: varchar({ length: 128 }),
   },
@@ -185,22 +186,34 @@ export const promotion = mysqlTable("promotion", {
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
 
+export const promotionCodes = mysqlTable("promotionCodes", {
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  promotionId: bigint({ mode: "number", unsigned: true })
+    .notNull()
+    .references(() => promotion.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+  code: varchar({ length: 255 }).notNull().unique(),
+  promoLink: varchar({ length: 255 }),
+  isUsed: boolean().default(false).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
+
 export const promotionList = mysqlTable("promotionList", {
   id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
-  orderId: bigint({
-    mode: "number",
-    unsigned: true,
-  }).references(() => orders.id, {
-    onDelete: "cascade",
-    onUpdate: "cascade",
-  }),
-  promotionId: bigint({
-    mode: "number",
-    unsigned: true,
-  }).references(() => promotion.id, {
-    onDelete: "cascade",
-    onUpdate: "cascade",
-  }),
+  orderId: bigint({ mode: "number", unsigned: true }).references(
+    () => orders.id,
+    { onDelete: "cascade", onUpdate: "cascade" },
+  ),
+  promotionId: bigint({ mode: "number", unsigned: true }).references(
+    () => promotion.id,
+    { onDelete: "cascade", onUpdate: "cascade" },
+  ),
+  promotionCodeId: bigint({ mode: "number", unsigned: true }).references(
+    () => promotionCodes.id,
+    { onDelete: "set null", onUpdate: "cascade" },
+  ),
   code: varchar({ length: 255 }).notNull(),
   type: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),

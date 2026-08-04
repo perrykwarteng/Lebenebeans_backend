@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { db } from "../config/index.js";
-import { promotion } from "../config/db/schema.js";
+import { promotion, promotionCodes } from "../config/db/schema.js";
 import { and, eq } from "drizzle-orm";
+import { bulkGeneratePromotionCodes } from "../utils/generateCode.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export const createPromotion = async (req: Request, res: Response) => {
   try {
@@ -64,51 +68,110 @@ export const getPromotion = async (req: Request, res: Response) => {
   try {
     const code = req.query.code as string;
     const type = req.query.type as string;
+    const promoCode = (req.query.promocode as string) || null;
 
-    if (!code || !type)
+    if (!code || !type) {
       return res.status(400).json({
-        message: "Promotion code and Promotion type are missing",
+        message: "Promotion code and promotion type are required.",
       });
+    }
 
     const nowDate = new Date();
+
     const getPromo = await db
-      .select()
+      .select({
+        id: promotion.id,
+        code: promotion.code,
+        type: promotion.type,
+        limits: promotion.limits,
+        minOrderAmount: promotion.minOrderAmount,
+        orderDiscount: promotion.orderDiscount,
+        minOrder: promotion.minOrder,
+        usedCount: promotion.usedCount,
+        startAt: promotion.startAt,
+        expiresAt: promotion.expiresAt,
+        isActive: promotion.isActive,
+      })
       .from(promotion)
       .where(and(eq(promotion.code, code), eq(promotion.type, type)));
 
-    if (getPromo[0]?.startAt! > nowDate) {
+    if (getPromo.length === 0) {
       return res.status(400).json({
-        message: "Sorry Promotion has not yet started",
+        message: "Promotion not found.",
       });
     }
 
-    if (getPromo[0]?.expiresAt! < nowDate) {
+    const promo = getPromo[0];
+
+    if (!promo?.isActive) {
       return res.status(400).json({
-        message: "Sorry promotion link has expired try another time",
+        message: "This promotion is inactive.",
       });
     }
 
-    if (getPromo[0]?.code !== code || getPromo[0].type !== type)
+    if (promo?.startAt > nowDate) {
       return res.status(400).json({
-        message: "Sorry You have wrong promo link, Check and apply again",
+        message: "Sorry, this promotion has not started yet.",
       });
+    }
 
-    res.status(200).json({
-      message: "Returned Promotion Successfully",
+    if (promo?.expiresAt < nowDate) {
+      return res.status(400).json({
+        message: "Sorry, this promotion has expired.",
+      });
+    }
+
+    let promotionCode = null;
+
+    if (promoCode) {
+      const codes = await db
+        .select()
+        .from(promotionCodes)
+        .where(
+          and(
+            eq(promotionCodes.promotionId, promo.id),
+            eq(promotionCodes.code, promoCode),
+          ),
+        );
+
+      if (codes.length === 0) {
+        return res.status(400).json({
+          message: "Invalid promotion code.",
+        });
+      }
+
+      promotionCode = codes[0];
+
+      if (promotionCode?.isUsed) {
+        return res.status(400).json({
+          message: "Sorry, this promotion code has already been used.",
+        });
+      }
+    }
+
+    return res.status(200).json({
+      message: "Promotion retrieved successfully.",
       data: {
-        id: getPromo[0].id,
-        code: getPromo[0]?.code,
-        type: getPromo[0]?.type,
-        minOrderAmount: getPromo[0]?.minOrderAmount,
-        orderDiscount: getPromo[0].orderDiscount,
-        minOrder: getPromo[0]?.minOrder,
-        startAt: getPromo[0]?.startAt! > nowDate ? false : getPromo[0]?.startAt,
-        expiresAt:
-          getPromo[0]?.expiresAt! < nowDate ? false : getPromo[0]?.expiresAt,
-        isActive: getPromo[0]?.isActive,
+        id: promo.id,
+        code: promo.code,
+        type: promo.type,
+        limits: promo.limits,
+        minOrderAmount: promo.minOrderAmount,
+        orderDiscount: promo.orderDiscount,
+        minOrder: promo.minOrder,
+        usedCount: promo.usedCount,
+        startAt: promo.startAt,
+        expiresAt: promo.expiresAt,
+        hasStarted: promo.startAt <= nowDate,
+        hasExpired: promo.expiresAt < nowDate,
+        isActive: promo.isActive,
+        promoCode: promotionCode?.code ?? null,
+        promoCodeUsed: promotionCode?.isUsed ?? null,
       },
     });
   } catch (error) {
+    console.error(error);
+
     return res.status(500).json({
       message: "Server error",
       error: error instanceof Error ? error.message : error,
@@ -135,6 +198,50 @@ export const setPromotionStatus = async (req: Request, res: Response) => {
 
     res.status(200).json({
       message: "Changed IsActive Successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Server error",
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+};
+
+export const generatePromotionCodes = async (req: Request, res: Response) => {
+  const { promotionId, count, prefix, size } = req.body;
+
+  if (!count || !prefix || !size) {
+    return res.status(400).json({
+      message: "Sorry count, prefix and size are required",
+    });
+  }
+
+  try {
+    const [promo] = await db
+      .select()
+      .from(promotion)
+      .where(eq(promotion.id, promotionId));
+
+    const generated = await bulkGeneratePromotionCodes({
+      promotionId,
+      count: count,
+      code: promo?.code ?? "",
+      type: promo?.type ?? "",
+      baseUrl: process.env.FRONTEND_URL ?? "https://lebenebeans.com",
+      prefix: prefix,
+      chunkSize: size,
+    });
+
+    let Links: string[] = [];
+    generated.forEach((element) => {
+      Links.push(element.promoLink);
+    });
+
+    res.status(201).json({
+      data: {
+        data: generated,
+        Links,
+      },
     });
   } catch (error) {
     return res.status(500).json({
