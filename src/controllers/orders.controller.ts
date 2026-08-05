@@ -46,8 +46,6 @@ export const createOrders = async (req: Request, res: Response) => {
       source,
     } = req.body;
 
-    console.log(req.body);
-
     if (
       !order ||
       !Array.isArray(order) ||

@@ -10,7 +10,7 @@ export const credentials = Buffer.from(
 
 export const initaitPayStackPay = async (data: {
   number: number;
-  totalPrice: number;
+  totalPrice: any;
   ordId: number;
   order: any[];
   location: string;
