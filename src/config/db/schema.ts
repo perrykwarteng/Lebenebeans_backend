@@ -271,3 +271,25 @@ export const paymentMethod = mysqlTable("paymentMethod", {
   paymentType: mysqlEnum(["Hubtel", "Paystack"]).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
+
+export const couponCodes = mysqlTable("couponCodes", {
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  couponCode: varchar({ length: 255 }).notNull().unique(),
+  usedCount: bigint({
+    mode: "number",
+    unsigned: true,
+  })
+    .default(0)
+    .notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
+
+export const couponCodeList = mysqlTable("couponCodeList", {
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  orderId: bigint({ mode: "number", unsigned: true }).references(
+    () => orders.id,
+    { onDelete: "cascade", onUpdate: "cascade" },
+  ),
+  couponCode: varchar({ length: 255 }).notNull(),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});

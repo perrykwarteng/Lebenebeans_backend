@@ -12,6 +12,7 @@ import menuRouter from "./routes/menu.route.js";
 import logRouter from "./routes/logs.route.js";
 import userRouter from "./routes/users.routes.js";
 import settingsRoute from "./routes/settings.route.js";
+import couponsRoute from "./routes/coupon.route.js";
 import http from "http";
 import { Server } from "socket.io";
 
@@ -48,6 +49,7 @@ app.use("/api/menus", menuRouter);
 app.use("/api/logs", logRouter);
 app.use("/api/users", userRouter);
 app.use("/api/settings", settingsRoute);
+app.use("/api/coupons", couponsRoute);
 
 io.on("connection", (socket) => {
   socket;

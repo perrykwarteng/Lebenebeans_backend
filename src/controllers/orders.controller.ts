@@ -12,6 +12,8 @@ import {
   users,
   paymentMethod,
   promotionCodes,
+  couponCodes,
+  couponCodeList,
 } from "../config/db/schema.js";
 import dotenv from "dotenv";
 import axios from "axios";
@@ -44,8 +46,9 @@ export const createOrders = async (req: Request, res: Response) => {
       promoId,
       promoCode,
       source,
+      couponCode,
     } = req.body;
-
+    
     if (
       !order ||
       !Array.isArray(order) ||
@@ -190,6 +193,26 @@ export const createOrders = async (req: Request, res: Response) => {
         })),
       );
 
+      if (couponCode != null) {
+        const couponExist = await db
+          .select()
+          .from(couponCodes)
+          .where(eq(couponCodes.couponCode, couponCode));
+
+        if (!couponExist) {
+          res.status(400).json({ message: "Invalid Coupon Code" });
+        }
+
+        await tx.update(couponCodes).set({
+          usedCount: (couponExist[0]?.usedCount ?? 0) + 1,
+        });
+
+        await tx.insert(couponCodeList).values({
+          orderId: orderDbId,
+          couponCode: couponCode,
+        });
+      }
+
       if (promoId != null) {
         const promo = (
           await tx.select().from(promotion).where(eq(promotion.id, promoId))
@@ -226,66 +249,162 @@ export const createOrders = async (req: Request, res: Response) => {
       };
     });
 
-    // let orderId = result.orderId;
+    // let initPayment;
+    // if (couponCode === null) {
+    //   if (payment === "Hubtel") {
+    //     initPayment = await initaitHubtelPay({
+    //       number,
+    //       totalPrice: result.finalAmount,
+    //       ordId: result.orderId,
+    //       order,
+    //       location,
+    //       deliveryFee,
+    //       foodCost,
+    //       deliveryType,
+    //       name,
+    //     });
+    //   }
+
+    //   if (payment === "Paystack") {
+    //     initPayment = await initaitPayStackPay({
+    //       number,
+    //       totalPrice: result.finalAmount,
+    //       ordId: result.orderId,
+    //       order,
+    //       location,
+    //       deliveryFee,
+    //       foodCost,
+    //       deliveryType,
+    //     });
+    //   }
+    // }
+
+    // if (!initPayment || !initPayment.data) {
+    //   await db
+    //     .update(payments)
+    //     .set({
+    //       paymentStatus: couponCode === null ? "success" : "failed",
+    //     })
+    //     .where(eq(payments.orderId, result.orderId));
+
+    //   throw new Error("Payment initialization failed");
+    // }
+
+    // console.log("Hello");
+
+    // if (couponCode === null) {
+    //   await db.insert(transactions).values({
+    //     orderId: result.orderId,
+    //     amount: result.finalAmount.toString(),
+    //     status: "pending",
+    //     reference:
+    //       initPayment?.data?.reference ||
+    //       initPayment?.data?.clientReference ||
+    //       null,
+    //     paymentsMethod: payment,
+    //     paymentNumber: number,
+    //   });
+
+    //   await db
+    //     .update(payments)
+    //     .set({
+    //       paymentStatus: "pending",
+    //     })
+    //     .where(eq(payments.orderId, result.orderId));
+    // } else {
+    //   await db.insert(transactions).values({
+    //     orderId: result.orderId,
+    //     amount: "0",
+    //     status: "success",
+    //     reference: null,
+    //     paymentsMethod: payment,
+    //     paymentNumber: number,
+    //   });
+
+    //   await db
+    //     .update(payments)
+    //     .set({
+    //       paymentStatus: "success",
+    //     })
+    //     .where(eq(payments.orderId, result.orderId));
+    // }
 
     let initPayment;
 
-    if (payment === "Hubtel") {
-      initPayment = await initaitHubtelPay({
-        number,
-        totalPrice: result.finalAmount,
-        ordId: result.orderId,
-        order,
-        location,
-        deliveryFee,
-        foodCost,
-        deliveryType,
-        name,
-      });
-    }
+    if (couponCode === null) {
+      if (payment === "Hubtel") {
+        initPayment = await initaitHubtelPay({
+          number,
+          totalPrice: result.finalAmount,
+          ordId: result.orderId,
+          order,
+          location,
+          deliveryFee,
+          foodCost,
+          deliveryType,
+          name,
+        });
+      }
 
-    if (payment === "Paystack") {
-      initPayment = await initaitPayStackPay({
-        number,
-        totalPrice: result.finalAmount,
-        ordId: result.orderId,
-        order,
-        location,
-        deliveryFee,
-        foodCost,
-        deliveryType,
-      });
-    }
+      if (payment === "Paystack") {
+        initPayment = await initaitPayStackPay({
+          number,
+          totalPrice: result.finalAmount,
+          ordId: result.orderId,
+          order,
+          location,
+          deliveryFee,
+          foodCost,
+          deliveryType,
+        });
+      }
 
-    if (!initPayment || !initPayment.data) {
+      if (!initPayment || !initPayment.data) {
+        await db
+          .update(payments)
+          .set({
+            paymentStatus: "failed",
+          })
+          .where(eq(payments.orderId, result.orderId));
+
+        throw new Error("Payment initialization failed");
+      }
+
+      await db.insert(transactions).values({
+        orderId: result.orderId,
+        amount: result.finalAmount.toString(),
+        status: "pending",
+        reference:
+          initPayment.data.reference ||
+          initPayment.data.clientReference ||
+          null,
+        paymentsMethod: payment,
+        paymentNumber: number,
+      });
+
       await db
         .update(payments)
         .set({
-          paymentStatus: "failed",
+          paymentStatus: "pending",
         })
         .where(eq(payments.orderId, result.orderId));
+    } else {
+      await db.insert(transactions).values({
+        orderId: result.orderId,
+        amount: "0",
+        status: "success",
+        reference: null,
+        paymentsMethod: payment,
+        paymentNumber: number,
+      });
 
-      throw new Error("Payment initialization failed");
+      await db
+        .update(payments)
+        .set({
+          paymentStatus: "success",
+        })
+        .where(eq(payments.orderId, result.orderId));
     }
-
-    await db.insert(transactions).values({
-      orderId: result.orderId,
-      amount: result.finalAmount.toString(),
-      status: "pending",
-      reference:
-        initPayment?.data?.reference ||
-        initPayment?.data?.clientReference ||
-        null,
-      paymentsMethod: payment,
-      paymentNumber: number,
-    });
-
-    await db
-      .update(payments)
-      .set({
-        paymentStatus: "pending",
-      })
-      .where(eq(payments.orderId, result.orderId));
 
     const ip = IpAddress(req);
     const userDevice = Device(req);
@@ -309,7 +428,7 @@ export const createOrders = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: "Order Created successfully",
-      data: initPayment.data,
+      data: couponCode === null ? initPayment.data : null,
       promo: promoId != null ? "Promo has been applied successfully" : null,
     });
   } catch (error) {
