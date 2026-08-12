@@ -83,6 +83,7 @@ export const createOrders = async (req: Request, res: Response) => {
       date.toISOString().slice(0, 19).replace("T", " ");
 
     let finalAmount = Number(totalPrice);
+    let payCouponTotal = 0;
 
     if (promoId != null) {
       const promo = (
@@ -194,26 +195,98 @@ export const createOrders = async (req: Request, res: Response) => {
       );
 
       if (couponCode != null) {
-        const [couponExist] = await tx
+        const [couponExist] = await db
           .select()
           .from(couponCodes)
           .where(eq(couponCodes.couponCode, couponCode));
 
         if (!couponExist) {
-          res.status(400).json({ message: "Invalid Coupon Code" });
+          res.status(400).json({
+            message: "Invalid Coupon Code",
+          });
         }
 
-        if (couponExist?.usedCount === 2) {
-          res.status(400).json({ message: "Sorry you've reach coupon limits" });
+        const now = new Date();
+
+        if ((couponExist?.quantity ?? 0) === 0) {
+          const nextDayStart = new Date(
+            Date.UTC(
+              now.getUTCFullYear(),
+              now.getUTCMonth(),
+              now.getUTCDate() + 1,
+              0,
+              0,
+              0,
+              0,
+            ),
+          );
+
+          const nextDayExpiry = new Date(
+            Date.UTC(
+              now.getUTCFullYear(),
+              now.getUTCMonth(),
+              now.getUTCDate() + 1,
+              23,
+              59,
+              59,
+              999,
+            ),
+          );
+
+          await tx
+            .update(couponCodes)
+            .set({
+              quantity: 2,
+              startAt: nextDayStart,
+              expiresAt: nextDayExpiry,
+            })
+            .where(eq(couponCodes.couponCode, couponCode));
+
+          res.status(400).json({
+            message:
+              "Sorry, you've reached the coupon limit for today. Please wait until tomorrow for your coupon to reset.",
+          });
         }
 
-        await tx.update(couponCodes).set({
-          usedCount: (couponExist?.usedCount ?? 0) + 1,
-        });
+        let remainingFreeQuantity = couponExist?.quantity ?? 0;
+        let totalFreeQuantity = 0;
+
+        finalAmount = order.reduce((total, item) => {
+          const freeQuantity = Math.min(item.quantity, remainingFreeQuantity);
+
+          remainingFreeQuantity -= freeQuantity;
+          totalFreeQuantity += freeQuantity;
+
+          const paidQuantity = item.quantity - freeQuantity;
+
+          return total + paidQuantity * item.unitPrice;
+        }, 0);
+
+        if (couponExist?.startAt && now < new Date(couponExist?.startAt)) {
+          res.status(400).json({
+            message:
+              "This coupon is not active yet, Please wait for tomorrow to apply coupon again",
+          });
+        }
+
+        if (couponExist?.expiresAt && now > new Date(couponExist?.expiresAt)) {
+          res.status(400).json({
+            message:
+              "Sorry, this coupon has expired. Please try again tomorrow.",
+          });
+        }
+
+        await tx
+          .update(couponCodes)
+          .set({
+            usedCount: (couponExist?.usedCount ?? 0) + 1,
+            quantity: remainingFreeQuantity,
+          })
+          .where(eq(couponCodes.couponCode, couponCode));
 
         await tx.insert(couponCodeList).values({
           orderId: orderDbId,
-          couponCode: couponCode,
+          couponCode,
         });
       }
 
@@ -253,89 +326,9 @@ export const createOrders = async (req: Request, res: Response) => {
       };
     });
 
-    // let initPayment;
-    // if (couponCode === null) {
-    //   if (payment === "Hubtel") {
-    //     initPayment = await initaitHubtelPay({
-    //       number,
-    //       totalPrice: result.finalAmount,
-    //       ordId: result.orderId,
-    //       order,
-    //       location,
-    //       deliveryFee,
-    //       foodCost,
-    //       deliveryType,
-    //       name,
-    //     });
-    //   }
-
-    //   if (payment === "Paystack") {
-    //     initPayment = await initaitPayStackPay({
-    //       number,
-    //       totalPrice: result.finalAmount,
-    //       ordId: result.orderId,
-    //       order,
-    //       location,
-    //       deliveryFee,
-    //       foodCost,
-    //       deliveryType,
-    //     });
-    //   }
-    // }
-
-    // if (!initPayment || !initPayment.data) {
-    //   await db
-    //     .update(payments)
-    //     .set({
-    //       paymentStatus: couponCode === null ? "success" : "failed",
-    //     })
-    //     .where(eq(payments.orderId, result.orderId));
-
-    //   throw new Error("Payment initialization failed");
-    // }
-
-    // console.log("Hello");
-
-    // if (couponCode === null) {
-    //   await db.insert(transactions).values({
-    //     orderId: result.orderId,
-    //     amount: result.finalAmount.toString(),
-    //     status: "pending",
-    //     reference:
-    //       initPayment?.data?.reference ||
-    //       initPayment?.data?.clientReference ||
-    //       null,
-    //     paymentsMethod: payment,
-    //     paymentNumber: number,
-    //   });
-
-    //   await db
-    //     .update(payments)
-    //     .set({
-    //       paymentStatus: "pending",
-    //     })
-    //     .where(eq(payments.orderId, result.orderId));
-    // } else {
-    //   await db.insert(transactions).values({
-    //     orderId: result.orderId,
-    //     amount: "0",
-    //     status: "success",
-    //     reference: null,
-    //     paymentsMethod: payment,
-    //     paymentNumber: number,
-    //   });
-
-    //   await db
-    //     .update(payments)
-    //     .set({
-    //       paymentStatus: "success",
-    //     })
-    //     .where(eq(payments.orderId, result.orderId));
-    // }
-
     let initPayment;
 
-    if (couponCode === null) {
+    if (finalAmount > 0) {
       if (payment === "Hubtel") {
         initPayment = await initaitHubtelPay({
           number,
@@ -432,7 +425,7 @@ export const createOrders = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       message: "Order Created successfully",
-      data: couponCode === null ? initPayment.data : null,
+      data: finalAmount > 0 ? initPayment.data : null,
       promo: promoId != null ? "Promo has been applied successfully" : null,
     });
   } catch (error) {

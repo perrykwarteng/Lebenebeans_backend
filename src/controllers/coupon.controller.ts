@@ -28,14 +28,43 @@ export const createCoupon = async (req: Request, res: Response) => {
       .limit(1);
 
     if (existingCoupon.length > 0) {
-      res.status(400).json({ message: "Coupon Code Already Exist" });
+      return res.status(400).json({ message: "Coupon Code Already Exists" });
     }
+
+    const today = new Date();
+
+    const startAt = new Date(
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+
+    const expiresAt = new Date(
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth(),
+        today.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
 
     const [coupon] = await db
       .insert(couponCodes)
       .values({
-        couponCode: couponCode!,
+        couponCode: couponCode,
         usedCount: 0,
+        quantity: 0,
+        startAt: startAt,
+        expiresAt: expiresAt,
       })
       .$returningId();
 
@@ -46,11 +75,13 @@ export const createCoupon = async (req: Request, res: Response) => {
         id: coupon?.id,
         couponCode: couponCode,
         usedCount: 0,
+        quantity: 2,
+        startAt: startAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
       },
     });
   } catch (error) {
     console.error("Create coupon error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create coupon",

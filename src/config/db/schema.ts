@@ -281,6 +281,9 @@ export const couponCodes = mysqlTable("couponCodes", {
   })
     .default(0)
     .notNull(),
+  quantity: int().default(1).notNull(),
+  startAt: datetime().notNull(),
+  expiresAt: datetime({ fsp: 3 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
 
