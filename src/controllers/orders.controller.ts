@@ -48,7 +48,7 @@ export const createOrders = async (req: Request, res: Response) => {
       source,
       couponCode,
     } = req.body;
-    
+
     if (
       !order ||
       !Array.isArray(order) ||
@@ -194,7 +194,7 @@ export const createOrders = async (req: Request, res: Response) => {
       );
 
       if (couponCode != null) {
-        const couponExist = await db
+        const [couponExist] = await tx
           .select()
           .from(couponCodes)
           .where(eq(couponCodes.couponCode, couponCode));
@@ -203,8 +203,12 @@ export const createOrders = async (req: Request, res: Response) => {
           res.status(400).json({ message: "Invalid Coupon Code" });
         }
 
+        if (couponExist?.usedCount === 2) {
+          res.status(400).json({ message: "Sorry you've reach coupon limits" });
+        }
+
         await tx.update(couponCodes).set({
-          usedCount: (couponExist[0]?.usedCount ?? 0) + 1,
+          usedCount: (couponExist?.usedCount ?? 0) + 1,
         });
 
         await tx.insert(couponCodeList).values({
