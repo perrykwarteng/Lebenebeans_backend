@@ -22,6 +22,7 @@ const server = http.createServer(app);
 
 const allowedOrigins: string[] = [
   process.env.FRONTEND_URL as string,
+  process.env.FRONTEND_URL2 as string,
   process.env.FRONTEND_LOCAL_URL as string,
 ];
 
