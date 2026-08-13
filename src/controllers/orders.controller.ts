@@ -49,6 +49,8 @@ export const createOrders = async (req: Request, res: Response) => {
       couponCode,
     } = req.body;
 
+    console.log(req.body);
+
     if (
       !order ||
       !Array.isArray(order) ||
@@ -83,7 +85,6 @@ export const createOrders = async (req: Request, res: Response) => {
       date.toISOString().slice(0, 19).replace("T", " ");
 
     let finalAmount = Number(totalPrice);
-    let payCouponTotal = 0;
 
     if (promoId != null) {
       const promo = (
@@ -175,6 +176,7 @@ export const createOrders = async (req: Request, res: Response) => {
           completed: false,
           promotion: promoId ? "Promotion Order" : null,
           processedAt: null,
+          couponUsed: couponCode ? "Coupon Used" : null,
           source,
           createdAt: toMysqlDatetime(now),
           updatedAt: toMysqlDatetime(now),

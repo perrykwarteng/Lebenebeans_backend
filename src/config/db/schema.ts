@@ -67,6 +67,7 @@ export const orders = mysqlTable(
     priceOfFood: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     orderPaid: boolean().default(false).notNull(),
     promotion: varchar({ length: 64 }),
+    couponUsed: varchar({ length: 64 }),
     createdAt: datetime({ mode: "string" }).notNull(),
     processedAt: datetime(),
     source: varchar({ length: 255 }).default("website").notNull(),
