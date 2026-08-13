@@ -403,6 +403,7 @@ export const createOrders = async (req: Request, res: Response) => {
           paymentStatus: "success",
         })
         .where(eq(payments.orderId, result.orderId));
+      io.emit("new-order");
     }
 
     const ip = IpAddress(req);
