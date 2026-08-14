@@ -398,6 +398,11 @@ export const createOrders = async (req: Request, res: Response) => {
       });
 
       await db
+        .update(orders)
+        .set({ orderPaid: true, processedAt: sql`now()` })
+        .where(eq(orders.id, result.orderId));
+
+      await db
         .update(payments)
         .set({
           paymentStatus: "success",
