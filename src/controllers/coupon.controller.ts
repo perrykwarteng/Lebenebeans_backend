@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db } from "../config/index.js";
 import { couponCodes, couponCodeList, orders } from "../config/db/schema.js";
 
@@ -257,10 +257,25 @@ export const getCouponUsedList = async (req: Request, res: Response) => {
         couponCode: couponCodeList.couponCode,
         couponCreatedAt: couponCodeList.createdAt,
 
-        order: orders,
+        order: {
+          name: orders.name,
+          number: orders.phoneNumber,
+          location: orders.location,
+          note: orders.note,
+          completed: orders.completed,
+          deliveryType: orders.deliveryType,
+          deliveryFee: orders.deliveryFee,
+          totalAmount: orders.amount,
+          priceOfFood: orders.priceOfFood,
+          orderPaid: orders.orderPaid,
+          promotion: orders.promotion,
+          source: orders.source,
+          createdAt: orders.createdAt,
+        },
       })
       .from(couponCodeList)
-      .leftJoin(orders, eq(couponCodeList.orderId, orders.id));
+      .innerJoin(orders, eq(couponCodeList.orderId, orders.id))
+      .orderBy(desc(couponCodeList.createdAt));
 
     return res.status(200).json({
       success: true,
