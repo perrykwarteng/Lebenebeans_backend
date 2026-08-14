@@ -152,7 +152,7 @@ export const users = mysqlTable("users", {
   name: varchar({ length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
-  role: mysqlEnum(["manager", "admin", "user"]).notNull(),
+  role: mysqlEnum(["manager", "admin", "user", "sales"]).notNull(),
 });
 
 export const promotion = mysqlTable("promotion", {
@@ -297,3 +297,33 @@ export const couponCodeList = mysqlTable("couponCodeList", {
   couponCode: varchar({ length: 255 }).notNull(),
   createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
 });
+
+export const riders = mysqlTable("riders", {
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  riderName: varchar({ length: 255 }).notNull(),
+  riderNumber: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
+
+export const assignOrders = mysqlTable(
+  "assignOrders",
+  {
+    id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+    orderId: bigint({ mode: "number", unsigned: true })
+      .notNull()
+      .references(() => orders.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    riderId: bigint({ mode: "number", unsigned: true })
+      .notNull()
+      .references(() => riders.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueOrderAssignment: unique("unique_order_assignment").on(table.orderId),
+  }),
+);

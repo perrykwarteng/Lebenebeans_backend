@@ -8,6 +8,8 @@ import bcrypt from "bcrypt";
 const getDefaultPassword = (role: string) => {
   if (role === "admin") return "admin12345";
   if (role === "manager") return "manager12345";
+  if (role === "user") return "user12345";
+  if (role === "sales") return "sales12345";
   return "password1";
 };
 
