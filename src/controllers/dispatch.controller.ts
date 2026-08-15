@@ -3,11 +3,14 @@ import { and, eq, isNull, lte, sql, inArray, gte, or } from "drizzle-orm";
 import { db } from "../config/index.js";
 import {
   assignOrders,
+  logs,
   orderItems,
   orders,
   riders,
+  users,
 } from "../config/db/schema.js";
 import { parseDateRange } from "../utils/dateRange.js";
+import { Device, IpAddress } from "../utils/ip.js";
 
 export const allAssaignOrdeer = async (req: Request, res: Response) => {
   try {
@@ -210,6 +213,7 @@ export const assignOrderRider = async (req: Request, res: Response) => {
 
     const orderId = data.orderId;
     const riderId = data.riderId;
+    const userId = data.userId;
 
     if (!orderId || !riderId) {
       return res.status(400).json({
@@ -264,6 +268,31 @@ export const assignOrderRider = async (req: Request, res: Response) => {
     await db.insert(assignOrders).values({
       orderId: Number(orderId),
       riderId: Number(riderId),
+    });
+
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(userId)));
+
+    const ip = IpAddress(req);
+    const userDevice = Device(req);
+    await db.insert(logs).values({
+      user: {
+        id: Number(userId),
+        name: user[0]?.name ?? "",
+        email: user[0]?.email ?? "np",
+      },
+      action: "Assign",
+      module: "Delivery",
+      description: `Assigned order ${orderId} to rider ${rider[0]?.riderName}`,
+      ipAddress: ip,
+      device: {
+        type: userDevice.type,
+        browser: userDevice.browser,
+        os: userDevice.os,
+      },
+      status: "success",
     });
 
     return res.status(201).json({
