@@ -19,7 +19,7 @@ import dotenv from "dotenv";
 import axios from "axios";
 import { db } from "../config/index.js";
 import crypto from "crypto";
-import { eq, and, sql, or } from "drizzle-orm";
+import { eq, and, sql, or, lte, gte } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 import { Device, IpAddress } from "../utils/ip.js";
@@ -28,6 +28,7 @@ import {
   initaitHubtelPay,
   initaitPayStackPay,
 } from "../services/paymentServices.js";
+import { parseDateRange } from "../utils/dateRange.js";
 
 dotenv.config();
 
@@ -664,14 +665,29 @@ export const statusTransaction = async (req: Request, res: Response) => {
 
 export const pendingOrders = async (req: Request, res: Response) => {
   try {
+    const { from, to } = req.query;
+    const { startDate, endDate } = parseDateRange(from as string, to as string);
+
+    const conditions = [
+      and(eq(transactions.status, "success"), eq(orders.completed, false)),
+    ];
+
+    if (startDate) {
+      const start = String(startDate).split("T")[0];
+      conditions.push(gte(orders.createdAt, `${start} 00:00:00`));
+    }
+
+    if (endDate) {
+      const end = String(endDate).split("T")[0];
+      conditions.push(lte(orders.createdAt, `${end} 23:59:59`));
+    }
+
     const ordersPending = await db
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderIdFk, orders.id))
       .innerJoin(transactions, eq(transactions.orderId, orders.id))
-      .where(
-        and(eq(transactions.status, "success"), eq(orders.completed, false)),
-      );
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const result: Record<number, GroupedOrder> = {};
 
@@ -703,12 +719,26 @@ export const pendingOrders = async (req: Request, res: Response) => {
 
 export const deliveredOrders = async (req: Request, res: Response) => {
   try {
+    const { from, to } = req.query;
+    const { startDate, endDate } = parseDateRange(from as string, to as string);
+    const conditions = [eq(orders.completed, true)];
+
+    if (startDate) {
+      const start = String(startDate).split("T")[0];
+      conditions.push(gte(orders.createdAt, `${start} 00:00:00`));
+    }
+
+    if (endDate) {
+      const end = String(endDate).split("T")[0];
+      conditions.push(lte(orders.createdAt, `${end} 23:59:59`));
+    }
+
     const ordersDelivered = await db
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderIdFk))
       // .innerJoin(transactions, eq(transactions.orderId, orders.id))
-      .where(eq(orders.completed, true));
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const result: Record<number, GroupedOrder> = {};
 

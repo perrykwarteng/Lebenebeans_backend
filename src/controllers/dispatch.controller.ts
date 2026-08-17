@@ -49,6 +49,7 @@ export const allAssaignOrdeer = async (req: Request, res: Response) => {
         assignedAt: assignOrders.createdAt,
         total: orders.amount,
         priceOfFood: orders.priceOfFood,
+        promotion: orders.promotion,
 
         name: orders.name,
         number: orders.phoneNumber,
@@ -78,6 +79,7 @@ export const allAssaignOrdeer = async (req: Request, res: Response) => {
             assignedAt: item.assignedAt,
             totalAmount: item.total,
             priceOfFood: item.priceOfFood,
+            promotion: item.promotion,
 
             name: item.name,
             number: item.number,
@@ -153,6 +155,7 @@ export const allNotAssignedOrdeer = async (req: Request, res: Response) => {
         createdAt: orders.createdAt,
         total: orders.amount,
         priceOfFood: orders.priceOfFood,
+        promotion: orders.promotion,
 
         orderItemId: orderItems.id,
         foodName: orderItems.foodName,
@@ -176,6 +179,7 @@ export const allNotAssignedOrdeer = async (req: Request, res: Response) => {
             deliveryFee: item.deliveryFee,
             totalAmount: item.total,
             priceOfFood: item.priceOfFood,
+            promotion: item.promotion,
             createdAt: item.createdAt,
             items: [],
           };
