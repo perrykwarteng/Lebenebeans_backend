@@ -19,7 +19,7 @@ import dotenv from "dotenv";
 import axios from "axios";
 import { db } from "../config/index.js";
 import crypto from "crypto";
-import { eq, and, sql, or, lte, gte } from "drizzle-orm";
+import { eq, and, sql, or, lte, gte, desc } from "drizzle-orm";
 import { io } from "../index.js";
 import { GroupedOrder } from "../types/type.js";
 import { Device, IpAddress } from "../utils/ip.js";
@@ -29,6 +29,7 @@ import {
   initaitPayStackPay,
 } from "../services/paymentServices.js";
 import { parseDateRange } from "../utils/dateRange.js";
+import { MySqlColumn } from "drizzle-orm/mysql-core";
 
 dotenv.config();
 
@@ -669,24 +670,23 @@ export const pendingOrders = async (req: Request, res: Response) => {
     const { startDate, endDate } = parseDateRange(from as string, to as string);
 
     const conditions = [
-      and(eq(transactions.status, "success"), eq(orders.completed, false)),
+      and(eq(orders.orderPaid, true), eq(orders.completed, false)),
     ];
 
     if (startDate) {
-      const start = String(startDate).split("T")[0];
-      conditions.push(gte(orders.createdAt, `${start} 00:00:00`));
+      const fromTimestamp = new Date(startDate).getTime();
+      conditions.push(gte(orders.date, fromTimestamp));
     }
 
     if (endDate) {
-      const end = String(endDate).split("T")[0];
-      conditions.push(lte(orders.createdAt, `${end} 23:59:59`));
+      const toTimestamp = new Date(endDate).getTime();
+      conditions.push(lte(orders.date, toTimestamp));
     }
 
     const ordersPending = await db
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orderItems.orderIdFk, orders.id))
-      .innerJoin(transactions, eq(transactions.orderId, orders.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const result: Record<number, GroupedOrder> = {};
@@ -724,20 +724,19 @@ export const deliveredOrders = async (req: Request, res: Response) => {
     const conditions = [eq(orders.completed, true)];
 
     if (startDate) {
-      const start = String(startDate).split("T")[0];
-      conditions.push(gte(orders.createdAt, `${start} 00:00:00`));
+      const fromTimestamp = new Date(startDate).getTime();
+      conditions.push(gte(orders.date, fromTimestamp));
     }
 
     if (endDate) {
-      const end = String(endDate).split("T")[0];
-      conditions.push(lte(orders.createdAt, `${end} 23:59:59`));
+      const toTimestamp = new Date(endDate).getTime();
+      conditions.push(lte(orders.date, toTimestamp));
     }
 
     const ordersDelivered = await db
       .select()
       .from(orders)
       .innerJoin(orderItems, eq(orders.id, orderItems.orderIdFk))
-      // .innerJoin(transactions, eq(transactions.orderId, orders.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     const result: Record<number, GroupedOrder> = {};
@@ -1035,3 +1034,33 @@ export const deleteStatus = async (req: Request, res: Response) => {
     });
   }
 };
+function timestampToDateTime(
+  date: MySqlColumn<
+    {
+      name: "date";
+      tableName: "orders";
+      dataType: "number";
+      columnType: "MySqlBigInt53";
+      data: number;
+      driverParam: string | number;
+      notNull: true;
+      hasDefault: false;
+      isPrimaryKey: false;
+      isAutoincrement: false;
+      hasRuntimeDefault: false;
+      enumValues: undefined;
+      baseColumn: never;
+      identity: undefined;
+      generated: undefined;
+    },
+    {},
+    {}
+  >,
+): any {
+  throw new Error("Function not implemented.");
+}
+function dateToTimestamp(
+  arg0: string,
+): number | import("drizzle-orm").SQLWrapper {
+  throw new Error("Function not implemented.");
+}
