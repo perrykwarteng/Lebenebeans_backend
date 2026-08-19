@@ -10,6 +10,9 @@ export const statistics = async (req: Request, res: Response) => {
 
     const { startDate, endDate } = parseDateRange(from as string, to as string);
 
+    const fromTimestamp = new Date(startDate).getTime();
+    const toTimestamp = new Date(endDate).getTime();
+
     const result = await db
       .select({
         totalOrders: sql<number>`COUNT(*)`,
@@ -20,7 +23,7 @@ export const statistics = async (req: Request, res: Response) => {
       .where(
         and(
           sql`${orders.orderPaid} = 1`,
-          sql`${orders.createdAt} BETWEEN ${startDate} AND ${endDate}`,
+          sql`${orders.date} BETWEEN ${fromTimestamp} AND ${toTimestamp}`,
         ),
       );
 

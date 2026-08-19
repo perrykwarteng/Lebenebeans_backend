@@ -1034,33 +1034,3 @@ export const deleteStatus = async (req: Request, res: Response) => {
     });
   }
 };
-function timestampToDateTime(
-  date: MySqlColumn<
-    {
-      name: "date";
-      tableName: "orders";
-      dataType: "number";
-      columnType: "MySqlBigInt53";
-      data: number;
-      driverParam: string | number;
-      notNull: true;
-      hasDefault: false;
-      isPrimaryKey: false;
-      isAutoincrement: false;
-      hasRuntimeDefault: false;
-      enumValues: undefined;
-      baseColumn: never;
-      identity: undefined;
-      generated: undefined;
-    },
-    {},
-    {}
-  >,
-): any {
-  throw new Error("Function not implemented.");
-}
-function dateToTimestamp(
-  arg0: string,
-): number | import("drizzle-orm").SQLWrapper {
-  throw new Error("Function not implemented.");
-}
