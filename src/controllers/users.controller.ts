@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { logs, users } from "../config/db/schema.js";
+import { feedBack, logs, orders, users } from "../config/db/schema.js";
 import { db } from "../config/index.js";
 import { eq } from "drizzle-orm";
 import { Device, IpAddress } from "../utils/ip.js";
@@ -155,5 +155,37 @@ export const resetPassword = async (req: Request, res: Response) => {
     return res.json({ message: "Password reset successfully" });
   } catch (err) {
     return res.status(500).json({ message: "Reset failed" });
+  }
+};
+
+export const getFeedBack = async (req: Request, res: Response) => {
+  try {
+    const feedBacks = await db.select().from(feedBack);
+
+    return res.json({
+      message: "Retrived FeedBack Successfully",
+      data: feedBacks,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Getting FeedBack failed:", error });
+  }
+};
+
+export const createFeedBack = async (req: Request, res: Response) => {
+  try {
+    const { rating, experience, thoughts, orderId } = req.body;
+
+    await db.insert(feedBack).values({
+      rating,
+      experience,
+      thoughts,
+      orderId,
+    });
+
+    return res.status(201).json({ message: "FeedBack submitted successfully" });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Getting FeedBack failed: ", error });
   }
 };

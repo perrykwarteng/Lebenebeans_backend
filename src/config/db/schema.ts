@@ -327,3 +327,17 @@ export const assignOrders = mysqlTable(
     uniqueOrderAssignment: unique("unique_order_assignment").on(table.orderId),
   }),
 );
+
+export const feedBack = mysqlTable("feedBack", {
+  id: bigint({ mode: "number", unsigned: true }).autoincrement().primaryKey(),
+  orderId: bigint({ mode: "number", unsigned: true })
+    .notNull()
+    .references(() => orders.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
+  rating: varchar({ length: 255 }),
+  experience: varchar({ length: 255 }),
+  thoughts: varchar({ length: 255 }),
+  createdAt: timestamp({ mode: "string" }).defaultNow().notNull(),
+});
