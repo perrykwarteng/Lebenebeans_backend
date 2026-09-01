@@ -109,6 +109,27 @@ export const promoStatistics = async (req: Request, res: Response) => {
       .from(orders)
       .where(dateFilter);
 
+    // const promoAmount = await db
+    //   .select({
+    //     totalPromoAmount: sql<number>`
+    //   COALESCE(
+    //     SUM(
+    //       CASE
+    //         WHEN ${orders.source} = ${"website"}
+    //           THEN COALESCE(${orders.priceOfFood}, 0)
+
+    //         ELSE
+    //           COALESCE(${orders.priceOfFood}, 0) +
+    //           COALESCE(${orders.deliveryFee}, 0)
+    //       END
+    //     ),
+    //     0
+    //   )
+    // `,
+    //   })
+    //   .from(orders)
+    //   .where(dateFilter);
+
     const aiAmount10 = await db
       .select({
         totalAIAmount: sql<number>`
@@ -155,6 +176,18 @@ export const promoStatistics = async (req: Request, res: Response) => {
       .from(orders)
       .where(and(dateFilter, eq(orders.source, "website")));
 
+    const freeDeliveryFeeAmount = await db
+      .select({
+        totalFreeDeliveryFeeAmount: sql<number>`
+          COALESCE(
+            SUM(COALESCE(${orders.deliveryFee}, 0)),
+            0
+          )
+        `,
+      })
+      .from(orders)
+      .where(and(dateFilter, eq(orders.source, "website")));
+
     const totalPromoOrders = Number(result[0]?.totalPromoOrders) || 0;
 
     const totalAIOrders = Number(aiOrder[0]?.totalAIOrders) || 0;
@@ -172,6 +205,9 @@ export const promoStatistics = async (req: Request, res: Response) => {
     const totalFreeDeliverOrderAmount =
       Number(freeDeliveryOrderAmount[0]?.totalFreeDeliveryAmount) || 0;
 
+    const totalFreeDeliverFeeAmount =
+      Number(freeDeliveryFeeAmount[0]?.totalFreeDeliveryFeeAmount) || 0;
+
     return res.json({
       totalPromoOrders,
       totalAIOrders,
@@ -180,6 +216,7 @@ export const promoStatistics = async (req: Request, res: Response) => {
       totalAIAmount10,
       totalAIRemaining,
       totalFreeDeliverOrderAmount,
+      totalFreeDeliverFeeAmount,
       from: startDate,
       to: endDate,
     });
