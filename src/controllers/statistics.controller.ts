@@ -399,10 +399,9 @@ export const promoStatistics = async (req: Request, res: Response) => {
         orderId: orders.id,
         name: orders.name,
         number: orders.phoneNumber,
-        location: orders.location,
+        total: {},
         deliveryFee: orders.deliveryFee,
         createdAt: orders.createdAt,
-        total: orders.amount,
         priceOfFood: orders.priceOfFood,
         promotion: orders.promotion,
         source: orders.source,
@@ -418,14 +417,32 @@ export const promoStatistics = async (req: Request, res: Response) => {
 
     const groupedOrders = Object.values(
       data.reduce((acc: any, item) => {
+        const totalAmount =
+          Number(item?.priceOfFood) + Number(item?.deliveryFee);
+        const discountAmount =
+          (Number(item.priceOfFood) + Number(item.deliveryFee)) * 0.1;
+        Number(item?.priceOfFood) + Number(item?.deliveryFee);
+        const paidAmount = totalAmount - discountAmount;
+
         if (!acc[item.orderId]) {
           acc[item.orderId] = {
             orderId: item.orderId,
             name: item.name,
             number: item.number,
-            location: item.location,
             deliveryFee: item.deliveryFee,
-            totalAmount: item.total,
+            amountPaid:
+              item.source === "ai"
+                ? paidAmount
+                : item.source === "website"
+                  ? totalAmount
+                  : 0,
+            discountedAmount:
+              item.source === "ai"
+                ? discountAmount
+                : item.source === "website"
+                  ? 0
+                  : 0,
+            totalAmount: totalAmount,
             priceOfFood: item.priceOfFood,
             promotion: item.promotion,
             source: item.source,
