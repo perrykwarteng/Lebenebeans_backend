@@ -3,6 +3,7 @@ import { db } from "../config/index.js";
 import { orderItems, orders, promotionList } from "../config/db/schema.js";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { parseDateRange } from "../utils/dateRange.js";
+import { io } from "../index.js";
 
 export const statistics = async (req: Request, res: Response) => {
   try {
@@ -39,6 +40,7 @@ export const statistics = async (req: Request, res: Response) => {
 
     const amountToPay = Number((totalRevenue - amountToKeep).toFixed(2));
 
+    io.emit("new-order");
     return res.json({
       totalOrders,
       totalRevenue: Number(totalRevenue.toFixed(2)),
