@@ -883,6 +883,7 @@ export const cancelStatus = async (req: Request, res: Response) => {
       .update(orders)
       .set({
         completed: null,
+        orderPaid: false,
       })
       .where(eq(orders.id, orderId));
 
@@ -912,6 +913,7 @@ export const cancelStatus = async (req: Request, res: Response) => {
       status: "success",
     });
 
+    io.emit("new-order");
     return res.status(200).json({
       message: "Cancelled successfully",
       data: order,
