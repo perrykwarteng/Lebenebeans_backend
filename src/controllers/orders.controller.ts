@@ -29,7 +29,6 @@ import {
   initaitPayStackPay,
 } from "../services/paymentServices.js";
 import { parseDateRange } from "../utils/dateRange.js";
-import { MySqlColumn } from "drizzle-orm/mysql-core";
 
 dotenv.config();
 
@@ -64,6 +63,16 @@ export const createOrders = async (req: Request, res: Response) => {
     ) {
       return res.status(400).json({
         message: "Fill all required fields",
+      });
+    }
+
+    const ordersIsOpen = await db.select().from(closeOrders);
+    const closedOrder = ordersIsOpen[0]?.closeOrders === "close";
+
+    if (closedOrder) {
+      return res.status(400).json({
+        message:
+          "Orders are currently closed. Please check back when ordering reopens. Thank you for your patience!",
       });
     }
 
