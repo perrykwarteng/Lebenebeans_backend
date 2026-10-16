@@ -291,3 +291,41 @@ export const getCouponUsedList = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const resetCoupon = async () => {
+  const now = new Date();
+
+  const nextDayStart = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  const nextDayExpiry = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+
+  try {
+    const resetAll = await db.update(couponCodes).set({
+      startAt: nextDayStart,
+      expiresAt: nextDayExpiry,
+    });
+    console.log("Coupons successfully reset for the day");
+  } catch (error) {
+    console.error("Failed to reset coupons error:", error);
+  }
+};

@@ -16,6 +16,8 @@ import couponsRoute from "./routes/coupon.route.js";
 import dispatchRoute from "./routes/dispatch.route.js";
 import http from "http";
 import { Server } from "socket.io";
+import { resetCoupon } from "./controllers/coupon.controller.js";
+import { couponJob } from "./jobs/coupon.job.js";
 
 dotenv.config();
 const app = express();
@@ -57,6 +59,8 @@ app.use("/api/dispatch", dispatchRoute);
 io.on("connection", (socket) => {
   socket;
 });
+
+couponJob();
 
 server.listen(PORT, () => {
   console.log(`App is running on http://localhost:${PORT}`);

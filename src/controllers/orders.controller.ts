@@ -255,7 +255,7 @@ export const createOrders = async (req: Request, res: Response) => {
 
           res.status(400).json({
             message:
-              "Sorry, you've reached the coupon limit for today. Please wait until tomorrow for your coupon to reset.",
+              "Sorry, you've reached the coupon limit.",
           });
         }
 
